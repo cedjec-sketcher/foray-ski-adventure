@@ -1,0 +1,22 @@
+[
+  {"id": "niseko", "name": "Niseko United", "region": "Hokkaido", "lat": 42.8048, "lon": 140.6874, "elevation_top_m": 1308, "typical_peak_cm": 220, "typical_min_c": -12, "typical_edge_c": 4},
+  {"id": "rusutsu", "name": "Rusutsu", "region": "Hokkaido", "lat": 42.7550, "lon": 140.8991, "elevation_top_m": 994, "typical_peak_cm": 200, "typical_min_c": -10, "typical_edge_c": 5},
+  {"id": "furano", "name": "Furano", "region": "Hokkaido", "lat": 43.3283, "lon": 142.3949, "elevation_top_m": 1231, "typical_peak_cm": 160, "typical_min_c": -14, "typical_edge_c": 3},
+  {"id": "kiroro", "name": "Kiroro", "region": "Hokkaido", "lat": 43.0833, "lon": 140.9500, "elevation_top_m": 1180, "typical_peak_cm": 210, "typical_min_c": -11, "typical_edge_c": 4},
+  {"id": "sapporo_teine", "name": "Sapporo Teine", "region": "Hokkaido", "lat": 43.1067, "lon": 141.1750, "elevation_top_m": 1023, "typical_peak_cm": 140, "typical_min_c": -8, "typical_edge_c": 5},
+  {"id": "asahidake", "name": "Asahidake", "region": "Hokkaido", "lat": 43.6706, "lon": 142.8564, "elevation_top_m": 2100, "typical_peak_cm": 180, "typical_min_c": -16, "typical_edge_c": 2},
+  {"id": "zao", "name": "Zao Onsen", "region": "Tohoku", "lat": 38.1500, "lon": 140.4167, "elevation_top_m": 1841, "typical_peak_cm": 180, "typical_min_c": -9, "typical_edge_c": 6},
+  {"id": "appi", "name": "Appi Kogen", "region": "Tohoku", "lat": 39.9317, "lon": 140.9508, "elevation_top_m": 1305, "typical_peak_cm": 150, "typical_min_c": -10, "typical_edge_c": 5},
+  {"id": "geto", "name": "Geto Kogen", "region": "Tohoku", "lat": 39.2500, "lon": 140.9333, "elevation_top_m": 1300, "typical_peak_cm": 240, "typical_min_c": -9, "typical_edge_c": 6},
+  {"id": "hakkoda", "name": "Hakkoda", "region": "Tohoku", "lat": 40.6544, "lon": 140.8681, "elevation_top_m": 1324, "typical_peak_cm": 300, "typical_min_c": -8, "typical_edge_c": 6},
+  {"id": "nozawa", "name": "Nozawa Onsen", "region": "Nagano", "lat": 36.9214, "lon": 138.4386, "elevation_top_m": 1650, "typical_peak_cm": 150, "typical_min_c": -7, "typical_edge_c": 7},
+  {"id": "hakuba_happo", "name": "Hakuba Happo-one", "region": "Nagano", "lat": 36.6981, "lon": 137.8038, "elevation_top_m": 1831, "typical_peak_cm": 170, "typical_min_c": -8, "typical_edge_c": 6},
+  {"id": "hakuba_cortina", "name": "Hakuba Cortina", "region": "Nagano", "lat": 36.7972, "lon": 137.8489, "elevation_top_m": 1378, "typical_peak_cm": 200, "typical_min_c": -8, "typical_edge_c": 6},
+  {"id": "shiga_kogen", "name": "Shiga Kogen", "region": "Nagano", "lat": 36.7000, "lon": 138.5167, "elevation_top_m": 2307, "typical_peak_cm": 160, "typical_min_c": -9, "typical_edge_c": 5},
+  {"id": "myoko", "name": "Myoko Suginohara", "region": "Niigata", "lat": 36.8833, "lon": 138.2000, "elevation_top_m": 1655, "typical_peak_cm": 220, "typical_min_c": -7, "typical_edge_c": 7},
+  {"id": "naeba", "name": "Naeba", "region": "Niigata", "lat": 36.8167, "lon": 138.7833, "elevation_top_m": 1789, "typical_peak_cm": 190, "typical_min_c": -7, "typical_edge_c": 7},
+  {"id": "gala_yuzawa", "name": "GALA Yuzawa", "region": "Niigata", "lat": 36.9333, "lon": 138.8167, "elevation_top_m": 1181, "typical_peak_cm": 150, "typical_min_c": -6, "typical_edge_c": 8},
+  {"id": "madarao", "name": "Madarao", "region": "Nagano", "lat": 36.8333, "lon": 138.3167, "elevation_top_m": 1382, "typical_peak_cm": 180, "typical_min_c": -7, "typical_edge_c": 7},
+  {"id": "tazawako", "name": "Tazawako", "region": "Tohoku", "lat": 39.7167, "lon": 140.7333, "elevation_top_m": 1210, "typical_peak_cm": 170, "typical_min_c": -9, "typical_edge_c": 6},
+  {"id": "kagura", "name": "Kagura", "region": "Niigata", "lat": 36.8000, "lon": 138.8667, "elevation_top_m": 1845, "typical_peak_cm": 250, "typical_min_c": -8, "typical_edge_c": 6}
+]
