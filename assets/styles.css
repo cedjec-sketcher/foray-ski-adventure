@@ -114,6 +114,18 @@ h1{
 .grid{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;align-items:start;}
 @media (max-width:860px){ .grid{grid-template-columns:1fr;} }
 
+/* The list card's height is set to match the map card's rendered height in
+   JS (syncResortListHeight in app.js) — a pure-CSS "shrink this sibling to
+   match that one" doesn't apply here, since neither card has an externally
+   imposed height for the shrink to happen against; the grid's own height is
+   itself derived from its children's content. On mobile the inline height
+   is cleared and this reverts to normal flow (see syncResortListHeight). */
+.resort-list-card{display:flex;flex-direction:column;overflow:hidden;}
+.resort-list-card #resort-list{
+  overflow-y:auto;min-height:0;flex:1 1 auto;padding-right:6px;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+}
+
 .card{
   background:var(--surface);
   border:1px solid var(--border);

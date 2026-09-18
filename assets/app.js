@@ -582,6 +582,26 @@
   setMode('season');
   select("niseko");
   fetchLiveConditions();
+
+  // ---- resort-list height, matched to the map card ----
+  // Neither card has an externally imposed height for a CSS-only "shrink to
+  // match your sibling" rule to apply against — the grid's own height comes
+  // from its children's content in the first place — so the match is done
+  // here instead: measure the map card once laid out, and set the list
+  // card's height to the same value so its own content scrolls internally.
+  // Above the 860px breakpoint where .grid stacks to one column, the inline
+  // height is cleared so the list flows with the page normally.
+  var mapCardEl = document.querySelector('.map-card');
+  var listCardEl = document.querySelector('.resort-list-card');
+  function syncResortListHeight(){
+    if(window.innerWidth <= 860){
+      listCardEl.style.height = '';
+      return;
+    }
+    listCardEl.style.height = mapCardEl.getBoundingClientRect().height + 'px';
+  }
+  syncResortListHeight();
+  window.addEventListener('resize', syncResortListHeight);
   } // end of the `typeof document !== 'undefined'` guard
 
   if (typeof module !== 'undefined' && module.exports) {
