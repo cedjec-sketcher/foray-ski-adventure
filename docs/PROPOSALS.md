@@ -173,15 +173,28 @@ against the known-correct formulas) as a short, repeatable
 
 ## Suggested order
 
-1. ~~Leaflet map~~ — done (see §2, "Map — done").
-2. Extract CSS/JS out of `template.html` (§1) — unlocks everything else.
-3. Add the Ruby unit tests for the already-verified math (§3a) — cheap,
-   immediate regression protection.
-4. Add the JS unit tests once extraction is done (§3b).
-5. Introduce the provider interface (§2) — needed before a second data source
-   or the historical-archive workflow makes sense.
-6. CI (§3c) — do when there's a concrete reason to need it (e.g., the
-   provider interface or the daily-snapshot workflow landing).
+Grouped by the chapter it belongs to above, so the numbering here doesn't
+collide with the §1/§2/§3 chapter references used throughout this doc.
+
+**§1 Code structure & quality**
+1. Extract CSS/JS out of `template.html` — the one item other chapters
+   depend on (§3b needs it).
+
+**§2 Flexibility — data sources & map**
+1. ~~Leaflet map~~ — done.
+2. Introduce the provider interface — needed before a second data source or
+   the historical-archive workflow makes sense.
+3. Season-constants config file — no dependency, do whenever it's useful.
+
+**§3 Testing & quality assurance**
+1. Ruby unit tests for the already-verified math (§3a) — cheap, immediate
+   regression protection, no dependency on anything else.
+2. JS unit tests (§3b) — blocked on §1's extraction above.
+3. CI (§3c) — do once §2's provider interface or the daily-snapshot workflow
+   gives it something concrete to run against.
+
+If picking just one place to start: §1's extraction, since it's the only
+item blocking something else (§3b).
 
 Let me know which of these you'd like implemented first — happy to start
 with any one in isolation.
