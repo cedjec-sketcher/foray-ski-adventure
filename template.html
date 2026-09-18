@@ -414,8 +414,48 @@
   }
 
   // ---- header meta ----
-  document.getElementById('fetch-meta').innerHTML =
-    "LIVE DATA FETCHED<br>" + fmtFetched(DATA.generated_at) + " JST<br>source: open-meteo.com";
+  function updateFetchMeta(){
+    var label = DATA.live_fetch_ok === false ? "SNAPSHOT (LIVE REFRESH FAILED)" : "LIVE DATA FETCHED";
+    document.getElementById('fetch-meta').innerHTML =
+      label + "<br>" + fmtFetched(DATA.generated_at) + " JST<br>source: open-meteo.com";
+  }
+  updateFetchMeta();
+
+  // ---- live client-side refresh ----
+  // The page renders instantly from the snapshot baked in at build time (above);
+  // this fetches current conditions directly from Open-Meteo and upgrades the
+  // in-memory data in place once it resolves. Falls back silently to the
+  // snapshot if the fetch fails for any reason (offline, API hiccup, etc).
+  function fetchLiveConditions(){
+    var lats = DATA.resorts.map(function(r){ return r.lat; }).join(",");
+    var lons = DATA.resorts.map(function(r){ return r.lon; }).join(",");
+    var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lats + "&longitude=" + lons +
+      "&current=snow_depth,temperature_2m,weather_code&timezone=Asia%2FTokyo";
+    fetch(url).then(function(res){
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function(live){
+      if(!Array.isArray(live) || live.length !== DATA.resorts.length){
+        throw new Error("unexpected response shape");
+      }
+      var fetchedAt = null;
+      DATA.resorts.forEach(function(r, i){
+        var cur = live[i].current;
+        r.snow_depth_cm = Math.round(cur.snow_depth * 1000) / 10;
+        r.temperature_c = cur.temperature_2m;
+        r.weather_code = cur.weather_code;
+        fetchedAt = cur.time;
+      });
+      DATA.generated_at = fetchedAt;
+      DATA.live_fetch_ok = true;
+      updateFetchMeta();
+      if(state.mode === 'live') refreshAll();
+    }).catch(function(err){
+      DATA.live_fetch_ok = false;
+      updateFetchMeta();
+      console.warn("Live conditions fetch failed, showing last-built snapshot:", err);
+    });
+  }
 
   // ---- map ----
   var svg = document.getElementById('map-svg');
@@ -794,5 +834,6 @@
   slider.value = PEAK_INDEX;
   setMode('season');
   select("niseko");
+  fetchLiveConditions();
 })();
 </script>

@@ -2,15 +2,19 @@
 
 ## Overview
 
-Foray Ski Adventure is a static, backend-free web page. There is no server and
-no runtime API calls from the browser — everything the page needs is computed
-once at build time by a Ruby script and inlined into the HTML as JSON. The
-browser only does rendering and interaction on data it already has.
+Foray Ski Adventure is a static, backend-free web page, deployed via GitHub
+Pages. There's no server: a Ruby build script computes everything it can
+ahead of time and inlines it into `index.html` as JSON, so the page renders
+instantly from that snapshot on load — and then the browser makes one direct
+request to Open-Meteo to refresh live conditions in place. Historically (see
+below) even that client-side request wasn't possible.
 
-This shape exists because the current deployment target (a Claude Artifact) is
-sandboxed: it cannot make outbound network requests or load external map
-tiles. See [PROPOSALS.md](./PROPOSALS.md) for how that changes once the site
-moves to GitHub Pages, which has no such restriction.
+This shape is a holdover from the project's original deployment target, a
+Claude Artifact, which sandboxes the page: no outbound network requests, no
+external map tiles. GitHub Pages has no such restriction, which is what
+made the live client-side fetch possible — but the map is still the
+sandbox-era static SVG (see [PROPOSALS.md](./PROPOSALS.md) for the plan to
+replace it with real tiles).
 
 ## Build-time pipeline
 
@@ -90,9 +94,16 @@ at this scale (20 resorts, a handful of DOM nodes each).
   resolved in the browser. This has real costs — see PROPOSALS.md — but it's
   the only option that works inside the sandbox and needs zero client-side
   geo libraries.
-- **Data is embedded inline, not fetched by the page.** Same constraint: the
-  sandbox blocks `fetch`/XHR to external hosts, so there is no "loading"
-  state — the page opens with the data it was built with.
+- **The build-time snapshot is embedded inline, and the page opens with it
+  immediately** — there is no loading state for the initial render. On GitHub
+  Pages, a `fetchLiveConditions()` call then goes out to Open-Meteo directly
+  from the browser (the same batched request `build_data.rb` makes) and
+  overwrites each resort's live depth/temperature in place once it resolves;
+  if it fails for any reason, the page just keeps showing the snapshot and
+  the header label switches to "snapshot (live refresh failed)". This was not
+  possible under the Claude Artifact sandbox, which blocks `fetch`/XHR to
+  external hosts — that version still relies entirely on the baked-in
+  snapshot.
 - **The season curve is synthetic, not measured.** It exists to make the
   visualization meaningful during the off-season (when live depth is 0cm
   almost everywhere) and to preview what the size/color encoding looks like
@@ -101,8 +112,12 @@ at this scale (20 resorts, a handful of DOM nodes each).
 
 ## Known constraints (as of this snapshot)
 
-- No live network access from the deployed page — `index.html` is a snapshot
-  as of whenever `scripts/build_data.rb` last ran.
+- Live conditions refresh client-side on GitHub Pages, but the "typical
+  season" curve, the map coastline, and resort coordinates are still fixed
+  at whatever `scripts/build_data.rb` last produced — regenerating those
+  still requires re-running the script and redeploying.
+- The Claude Artifact version has no live network access at all (sandboxed);
+  it always shows the build-time snapshot.
 - No real historical data — the "typical season" curve is a hand-tuned bell
   curve, not recorded observations.
 - No automated tests (see PROPOSALS.md, section 3).
