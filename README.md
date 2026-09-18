@@ -50,7 +50,11 @@ ruby scripts/build_data.rb
 ```
 
 This refreshes `data/ski_data.json` with a fresh live snow/temperature fetch
-and rewrites `index.html`.
+and rewrites `index.html`, stamping `assets/app.js`/`assets/styles.css` with
+a content-hash query string (`?v=...`) so GitHub Pages' 10-minute asset
+cache doesn't hide a real change — **always run this after editing either
+file**, or the deployed page will keep serving the old one for up to 10
+minutes even after you push.
 
 ## Running the tests
 

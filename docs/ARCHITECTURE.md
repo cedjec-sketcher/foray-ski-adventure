@@ -46,8 +46,11 @@ flowchart LR
    labeled as such in the UI — because no real historical time series
    exists yet.
 3. **Write outputs.** `data/ski_data.json` (the raw generated dataset, useful
-   on its own) and `index.html` (the template with that JSON spliced into the
-   `<script type="application/json">` placeholder).
+   on its own) and `index.html` (the template with that JSON spliced in, and
+   `assets/app.js`/`assets/styles.css`'s `<script src>`/`<link href>`
+   stamped with `?v=<8-char MD5 of that file's own content>`). An asset
+   whose content didn't change keeps the same hash, so this only busts the
+   cache for files that actually changed.
 
 There's no map-projection step here anymore — resorts carry their raw
 `lat`/`lon` straight through, and Leaflet does the projection in the browser.
@@ -143,6 +146,19 @@ at this scale (20 resorts, a handful of DOM nodes each).
   issue that also needed fixing, just not the one in the screenshot).
   Confirmed by inspecting Leaflet's actual computed z-indices at runtime
   before picking 1100, not by guessing a bigger number.
+- **`assets/app.js`/`assets/styles.css` are cache-busted with a content
+  hash, not requested with plain URLs.** GitHub Pages serves them with
+  `Cache-Control: max-age=600` — confirmed directly on the live site, not
+  assumed — so a browser that loaded the page once won't see a real change
+  for up to 10 minutes on a plain reload, hard-refresh included on some
+  browsers' handling of query-less URLs. That 10-minute window is exactly
+  what made the z-index fix above look like it hadn't deployed when it had:
+  a stale cached copy in the browser doing the checking, not a bad
+  deployment. Every build stamps each asset's own `<script src>`/`<link
+  href>` with `?v=<hash of that file's content>`, so an actual content
+  change is always a new URL to the browser and never waits out the cache;
+  an unchanged file keeps the same URL and stays cached, which is still the
+  right behavior for it.
 - **The build-time snapshot is embedded inline, and the page opens with it
   immediately** — there is no loading state for the initial render. On GitHub
   Pages, a `fetchLiveConditions()` call then goes out to Open-Meteo directly
