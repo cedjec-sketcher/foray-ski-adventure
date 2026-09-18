@@ -13,7 +13,7 @@ class ThemeTokensTest < Minitest::Test
   end
 
   def test_light_and_dark_root_blocks_declare_the_same_set_of_tokens
-    css = File.read(CSS_PATH)
+    css = File.read(CSS_PATH, encoding: "UTF-8")
 
     # No token block here nests braces (custom-property declarations don't),
     # so matching up to the next "}" is enough to isolate each block, even

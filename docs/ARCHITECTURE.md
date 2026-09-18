@@ -128,6 +128,21 @@ at this scale (20 resorts, a handful of DOM nodes each).
   previous plain-SVG markers had. This is easy to lose silently when
   swapping to a mapping library — worth calling out for anyone touching this
   code later.
+- **`#map-tooltip`'s z-index (1100) has to clear Leaflet's own panes and
+  controls (up to 1000), not just look "high enough."** It's a
+  `position:fixed` sibling of `#map` in the DOM, not a descendant, so DOM
+  order alone doesn't guarantee it paints on top — `#map` (`.leaflet-container`)
+  never gets its own stacking context (`position:relative` with no explicit
+  `z-index` doesn't create one), so Leaflet's internal panes are compared
+  directly against the tooltip's z-index in the same stacking context. At
+  the old value (50) the map's tile/marker panes painted over the tooltip
+  everywhere they overlapped it, fully hiding it over the middle of the map
+  and only letting it peek out past the map's own edges — reported as
+  [#1](https://github.com/cedjec-sketcher/foray-ski-adventure/issues/1) and
+  initially misdiagnosed as a viewport-overflow problem (a real, separate
+  issue that also needed fixing, just not the one in the screenshot).
+  Confirmed by inspecting Leaflet's actual computed z-indices at runtime
+  before picking 1100, not by guessing a bigger number.
 - **The build-time snapshot is embedded inline, and the page opens with it
   immediately** — there is no loading state for the initial render. On GitHub
   Pages, a `fetchLiveConditions()` call then goes out to Open-Meteo directly

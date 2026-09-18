@@ -171,7 +171,11 @@ h1{
 .size-legend-item span{font-size:.68rem;color:var(--ink-3);font-family:"IBM Plex Mono",monospace;}
 
 .map-tooltip{
-  position:fixed;pointer-events:none;z-index:50;
+  /* Leaflet's own panes/controls inside #map go up to z-index:1000, and
+     since #map doesn't establish its own stacking context, they compete
+     directly with this element's z-index despite being earlier in the DOM
+     — anything lower than that gets painted over, hidden. */
+  position:fixed;pointer-events:none;z-index:1100;
   background:var(--ink);color:var(--bg);
   font-size:.76rem;line-height:1.4;
   padding:7px 10px;border-radius:8px;
