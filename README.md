@@ -50,3 +50,10 @@ Then open <http://localhost:8000/index.html>.
 - **Daily snapshots**: a scheduled GitHub Actions workflow that runs
   `scripts/build_data.rb` daily and commits the result would turn the
   "typical season" chart into real recorded history over a winter.
+
+## More docs
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the build pipeline and
+  the client-side rendering fit together, and why it's shaped this way
+- [docs/PROPOSALS.md](docs/PROPOSALS.md) — proposed improvements to code
+  structure, data-source/map flexibility, and test coverage
