@@ -255,8 +255,22 @@
       row.className = 'resort-row';
       row.type = 'button';
       row.addEventListener('click', function(){ select(r.id); });
+
+      // Built once per resort; renderList() below only ever updates these
+      // nodes' textContent, never rebuilds them, so resort data can't
+      // break the row's markup no matter what it contains.
+      var nameEl = document.createElement('span'); nameEl.className = 'name';
+      var liveEl = document.createElement('span'); liveEl.className = 'live';
+      var peakEl = document.createElement('span'); peakEl.className = 'peak';
+      var elevEl = document.createElement('span'); elevEl.className = 'elev';
+      nameEl.textContent = r.name;
+      row.appendChild(nameEl);
+      row.appendChild(liveEl);
+      row.appendChild(peakEl);
+      row.appendChild(elevEl);
+
       group.appendChild(row);
-      rowEls[r.id] = row;
+      rowEls[r.id] = { root: row, live: liveEl, peak: peakEl, elev: elevEl };
     });
     listEl.appendChild(group);
   });
@@ -264,13 +278,11 @@
   function renderList(){
     DATA.resorts.forEach(function(r){
       var disp = getDisplay(r);
-      var row = rowEls[r.id];
+      var refs = rowEls[r.id];
       var whenLabel = state.mode === 'live' ? 'now' : fmtDate(DATES[state.dayIndex]);
-      row.innerHTML =
-        '<span class="name">' + r.name + '</span>' +
-        '<span class="live">' + Math.round(disp.depth) + 'cm ' + whenLabel + '</span>' +
-        '<span class="peak">' + r.typical_peak_cm + 'cm peak</span>' +
-        '<span class="elev">' + r.elevation_top_m + 'm &middot; ' + disp.temp.toFixed(0) + '&deg;C</span>';
+      refs.live.textContent = Math.round(disp.depth) + 'cm ' + whenLabel;
+      refs.peak.textContent = r.typical_peak_cm + 'cm peak';
+      refs.elev.textContent = r.elevation_top_m + 'm · ' + disp.temp.toFixed(0) + '°C';
     });
   }
 
@@ -474,22 +486,31 @@
       r.typical_peak_cm + "cm in mid-February, and melts out by late April.";
   }
 
+  // Every state change goes through here, so "changed state but forgot to
+  // re-render" isn't a bug that's possible to write anymore — refreshAll()
+  // always fully re-syncs the DOM to whatever `state` now holds.
+  function setState(patch){
+    Object.assign(state, patch);
+    refreshAll();
+  }
+
   function select(id){
-    state.selectedId = id;
-    var r = DATA.resorts.filter(function(x){ return x.id === id; })[0];
-    if(!r) return;
+    setState({ selectedId: id });
+  }
+
+  function updateSelectionHighlight(){
     Object.keys(markerEls).forEach(function(k){
       var el = markerEls[k].getElement();
-      if(el) el.classList.toggle('is-selected', k===id);
+      if(el) el.classList.toggle('is-selected', k===state.selectedId);
     });
-    Object.keys(rowEls).forEach(function(k){ rowEls[k].classList.toggle('is-selected', k===id); });
-    renderDetail(r);
+    Object.keys(rowEls).forEach(function(k){ rowEls[k].root.classList.toggle('is-selected', k===state.selectedId); });
   }
 
   function refreshAll(){
     renderMarkers();
     renderList();
     renderSizeLegend();
+    updateSelectionHighlight();
     var r = DATA.resorts.filter(function(x){ return x.id === state.selectedId; })[0];
     if(r) renderDetail(r);
     updateDateLabel();
@@ -508,20 +529,21 @@
   var slider = document.getElementById('date-slider');
 
   function setMode(mode){
-    state.mode = mode;
+    // These reflect the mode-toggle widget's own visual state, not the
+    // "does the DOM match `state`" job setState()/refreshAll() do — kept
+    // colocated with the control that owns them.
     modeLiveBtn.classList.toggle('is-active', mode === 'live');
     modeSeasonBtn.classList.toggle('is-active', mode === 'season');
     modeLiveBtn.setAttribute('aria-selected', mode === 'live');
     modeSeasonBtn.setAttribute('aria-selected', mode === 'season');
     dateRow.style.opacity = mode === 'season' ? '1' : '.35';
     slider.disabled = mode !== 'season';
-    refreshAll();
+    setState({ mode: mode });
   }
   modeLiveBtn.addEventListener('click', function(){ setMode('live'); });
   modeSeasonBtn.addEventListener('click', function(){ setMode('season'); });
   slider.addEventListener('input', function(){
-    state.dayIndex = parseInt(slider.value, 10);
-    refreshAll();
+    setState({ dayIndex: parseInt(slider.value, 10) });
   });
 
   slider.value = PEAK_INDEX;

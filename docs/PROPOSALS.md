@@ -30,30 +30,46 @@ extraction happened, so there was nothing left to extract.)
 
 `index.html` now references `assets/app.js` and `assets/styles.css` by
 `<script src>`/`<link>` instead of inlining them — only the generated JSON
-stays inlined. This was a purely mechanical move: `app.js`'s internals are
-byte-for-byte the same logic that lived in the inline `<script>` before, so
-the three issues below are all still exactly as open as they were.
+stays inlined. The extraction itself was purely mechanical (`app.js`'s
+internals were byte-for-byte the same logic that lived in the inline
+`<script>` before), and left the three smaller issues below exactly as open
+as they'd been — they were fixed separately afterward, not by the move
+itself.
 
-**Still open — smaller issues, worth fixing but not blocking anything:**
+**The three smaller issues — all done:**
 
-- `state` is a bare mutable object mutated from several places
-  (`select`, `setMode`, the slider's `input` handler), each remembering to
-  call `refreshAll()` afterward. It works today but is easy to get wrong as
-  more state is added (e.g., a future map-provider toggle). Worth wrapping in
-  a single `setState(patch)` helper that always re-renders, so "forgot to
-  refresh" stops being a possible bug.
-- List rows and the detail-panel skeleton are built with string-concatenated
-  `innerHTML`. Fine for now since all data is self-generated, but fragile to
-  edit (a missed closing tag silently breaks layout) and would need real
-  escaping if resort data ever came from an untrusted source. Small template
-  helper functions (or just `textContent` assignment to pre-built nodes, as
-  the map markers already do) would remove the risk entirely.
-- The three copies of the CSS custom-property block (light `:root`, dark via
-  `@media`, dark via `[data-theme]`) are correct per the theming approach but
-  easy to let drift — we hit exactly this bug mid-conversation (updated two
-  of three blocks, the third was caught by `grep`). A small build-time check
-  (or generating all three from one source list) would catch that class of
-  mistake automatically instead of by accident.
+- `state` is now only ever changed through `setState(patch)`, which merges
+  the patch and always calls `refreshAll()` — "changed state but forgot to
+  re-render" isn't possible to write anymore. `select(id)` is now a one-line
+  wrapper (`setState({ selectedId: id })`); the slider handler is one line
+  too. `setMode` still directly updates the mode-toggle widget's own visual
+  state (active class, `aria-selected`, the slider's `disabled` flag) before
+  calling `setState` — that's the widget's own concern, not "does the DOM
+  match `state`," so it stayed colocated rather than being forced through
+  the same helper. Marker/row selection highlighting moved out of `select()`
+  into `refreshAll()` (via `updateSelectionHighlight()`), so it's now applied
+  consistently on every re-render instead of only when selection itself
+  changed — one unified place that makes the DOM match `state`, not two.
+- List rows no longer use string-concatenated `innerHTML`. Each row's four
+  child `<span>`s are created once, when the row itself is built;
+  `renderList()` only ever sets their `.textContent` afterward, the same
+  pattern `renderDetail()`/`buildDetailSkeleton()` already used for the
+  detail panel. No resort-sourced string ever reaches `innerHTML` now — a
+  missed closing tag or an HTML-special character in a resort name can't
+  break the layout. (`buildDetailSkeleton()`'s own `innerHTML` was left
+  alone: it's static markup built once, with no resort data interpolated
+  into it — CHART_W/CHART_H are the only interpolated values, both fixed
+  numeric constants — so it never carried the risk this was about.)
+- `test/theme_tokens_test.rb` now asserts the three `:root` blocks (bare,
+  `@media (prefers-color-scheme: dark)`, `[data-theme="dark"]`) declare the
+  exact same set of custom-property names — not their values, just that
+  nothing present in one is silently missing from another. Verified it
+  actually catches the failure mode it's meant to: deliberately dropped
+  `--temp-warm` from one block and confirmed the test fails with a clear
+  "missing: [...]" message naming the exact token and block, then restored
+  it. This is the build-time check proposed here, not the alternative
+  (generating all three from one source list) — cheaper to add, and it
+  would have caught the actual bug that happened.
 
 One thing the extraction *did* resolve: `scripts/build_data.rb`'s network
 fetch and pure curve computation no longer sit in the same top-to-bottom
@@ -215,8 +231,8 @@ collide with the §1/§2/§3 chapter references used throughout this doc.
 
 **§1 Code structure & quality**
 1. ~~Extract CSS/JS out of `template.html`~~ — done.
-2. The three still-open smaller issues (`state` mutation, `innerHTML`
-   fragility, CSS-drift protection) — no dependency, do whenever it's useful.
+2. ~~The three smaller issues~~ (`state` mutation, `innerHTML` fragility,
+   CSS-drift protection) — done.
 
 **§2 Flexibility — data sources & map**
 1. ~~Leaflet map~~ — done.
@@ -235,8 +251,8 @@ All three items in this chapter are done, except the manual QA checklist
 (§3d) and the headless-browser smoke test mentioned in §3b, neither of which
 were tracked here as numbered items.
 
-Left across §1 and §2: §1's three smaller issues and §2's provider interface
-and config file. None block each other — pick whichever is most useful next.
+§1 is fully done now. Left: §2's provider interface and config file. Neither
+blocks the other — pick whichever is most useful next.
 
 Let me know which of these you'd like implemented first — happy to start
 with any one in isolation.

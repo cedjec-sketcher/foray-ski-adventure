@@ -61,20 +61,24 @@ inlined in the page, since that's the one thing that has to travel with it.
 [Leaflet](https://leafletjs.com/) (loaded from cdnjs), which owns the map
 itself, while everything else — state, rendering, the chart — is plain
 DOM/SVG with no framework. There's one mutable `state` object
-(`{ mode, dayIndex, selectedId }`) and a `refreshAll()` function that
-re-derives all on-screen output from `state` + the embedded `DATA`:
+(`{ mode, dayIndex, selectedId }`), changed only through `setState(patch)`,
+and a `refreshAll()` function that re-derives all on-screen output from
+`state` + the embedded `DATA`:
 
 | Function | Responsibility |
 |---|---|
 | `getDisplay(resort)` | Picks live vs. typical-season values for one resort based on `state.mode`/`state.dayIndex` |
-| `tempToColor(temp)` | Diverging color scale, temperature → hex/rgb |
+| `tempToColor(temp, coldHex, midHex, warmHex)` | Diverging color scale, temperature → hex/rgb |
 | `depthToRadius(depth)` | Area-proportional size scale, snow depth → marker radius |
 | `renderMarkers()` | Updates every Leaflet `circleMarker`'s radius/fill/stroke via `setStyle()` |
-| `renderList()` | Rewrites each resort row's text in the sidebar list |
+| `renderList()` | Updates each resort row's pre-built child `<span>`s via `.textContent` |
 | `renderSizeLegend()` | Draws the size-legend circles using the same `depthToRadius` scale |
 | `renderChart(resort)` / `renderFigures(resort)` | Draws the selected resort's season chart and monthly-figures table |
 | `renderDetail(resort)` | Updates the stat row and calls the chart/figures renderers |
-| `select(id)` / `setMode(mode)` / slider handler | Mutate `state`, then call `refreshAll()` (or `renderDetail` directly for `select`) |
+| `updateSelectionHighlight()` | Toggles `.is-selected` on the marker and row matching `state.selectedId` |
+| `refreshAll()` | Calls all of the above, in order — the one function that makes the DOM match `state` |
+| `setState(patch)` | `Object.assign(state, patch)`, then `refreshAll()` — the only way `state` changes |
+| `select(id)` / `setMode(mode)` / slider handler | Each calls `setState(...)` with its own patch; `setMode` also updates the mode-toggle widget's own visual state first, since that's the control's own concern rather than a `state`-driven render |
 
 There is no framework, no virtual DOM, and no build step on the client side —
 `refreshAll()` just re-renders everything on every state change, which is fine
@@ -136,11 +140,25 @@ at this scale (20 resorts, a handful of DOM nodes each).
   snapshot.
 - **CSS and JS live in their own files, not inlined in the page.** The
   extraction itself was purely mechanical — `assets/app.js`'s internals were
-  unchanged from when they lived in `template.html`'s inline `<script>`. The
-  `state`-mutation pattern and the string-concatenated `innerHTML` in
-  `renderList`/`buildDetailSkeleton` are still exactly as fragile as before;
-  only the file boundary changed (see PROPOSALS.md §1 for what's still open
-  there).
+  unchanged from when they lived in `template.html`'s inline `<script>` at
+  the time it happened. The `state`-mutation pattern and `renderList`'s
+  string-concatenated `innerHTML` were fixed in a later pass (see the
+  `setState`/`textContent` decisions below) — the file move itself didn't
+  touch either.
+- **All `state` changes go through `setState(patch)`.** `select`, `setMode`,
+  and the slider handler each just describe what changed; `setState` merges
+  it in and calls `refreshAll()` unconditionally, so there's no longer a
+  call site that could mutate `state` and forget to re-render. Marker/row
+  selection highlighting moved into `refreshAll()` itself (as
+  `updateSelectionHighlight()`) rather than living only inside `select()`,
+  so it's one function's job to make the DOM match `state`, not several.
+- **List rows update via `.textContent`, not `innerHTML`.** Each row's four
+  child `<span>`s are built once; `renderList()` only ever writes their text
+  afterward. No resort-sourced string reaches `innerHTML` on every render
+  the way it used to — the same pattern the detail panel and the map markers
+  already used. `buildDetailSkeleton()`'s own `innerHTML` was left as-is: it
+  builds static markup once, with no resort data interpolated into it, so it
+  never carried the risk this was about.
 - **`assets/app.js` splits into a pure section and a DOM-guarded section, so
   it's `require()`-able from Node.** Everything that touches `document`,
   Leaflet, or `fetch` — the large majority of the file — is wrapped in
@@ -181,11 +199,13 @@ at this scale (20 resorts, a handful of DOM nodes each).
   at this project's traffic, worth knowing about if that changes.
 - No real historical data — the "typical season" curve is a hand-tuned bell
   curve, not recorded observations.
-- `rake test` covers the Ruby side (`lib/season_curve.rb` and
-  `lib/providers/open_meteo.rb`, the latter with the network call stubbed)
-  and `node --test test/js` covers `assets/app.js`'s pure functions.
-  `.github/workflows/test.yml` runs both, as separate jobs, on every push
-  and pull request to `main`. Not covered: `getDisplay` (closes over
+- `rake test` covers the Ruby side (`lib/season_curve.rb`,
+  `lib/providers/open_meteo.rb` with the network call stubbed, and
+  `test/theme_tokens_test.rb` guarding the three CSS `:root` blocks against
+  drifting out of sync with each other) and `node --test test/js` covers
+  `assets/app.js`'s pure functions. `.github/workflows/test.yml` runs both,
+  as separate jobs, on every push and pull request to `main`. Not covered:
+  `getDisplay` (closes over
   DOM-guarded state) and anything that needs a real DOM — 20 markers
   actually rendering, clicking one actually updating the detail panel, and
   so on. That's still manual (or a future headless-browser smoke test, see

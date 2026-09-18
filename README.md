@@ -61,8 +61,10 @@ to install:
 rake test
 ```
 
-Covers `lib/season_curve.rb` (pure curve math) and `lib/providers/open_meteo.rb`
-(with the network call stubbed, so it runs with no internet access).
+Covers `lib/season_curve.rb` (pure curve math), `lib/providers/open_meteo.rb`
+(with the network call stubbed, so it runs with no internet access), and
+`assets/styles.css`'s three light/dark `:root` blocks (guards against
+shipping a token in one theme but not the other).
 
 Node's built-in test runner (Node 18+) covers `assets/app.js`'s pure
 functions — `hexToRgb`, `lerpColor`, `tempToColor`, `depthToRadius`,
