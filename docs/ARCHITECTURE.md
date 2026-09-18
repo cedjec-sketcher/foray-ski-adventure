@@ -164,8 +164,8 @@ at this scale (20 resorts, a handful of DOM nodes each).
 - No real historical data — the "typical season" curve is a hand-tuned bell
   curve, not recorded observations.
 - `rake test` covers the Ruby side (`lib/season_curve.rb` and
-  `lib/providers/open_meteo.rb`, the latter with the network call stubbed).
-  Nothing covers `assets/app.js` yet — its functions aren't exported, and
-  `tempToColor` still reads CSS custom properties via `document`, which
+  `lib/providers/open_meteo.rb`, the latter with the network call stubbed),
+  and `.github/workflows/test.yml` runs it on every push and pull request to
+  `main`. Nothing covers `assets/app.js` yet — its functions aren't exported,
+  and `tempToColor` still reads CSS custom properties via `document`, which
   plain Node can't do (see PROPOSALS.md §3b for what's actually blocking it).
-  There's also no CI running `rake test` automatically yet.

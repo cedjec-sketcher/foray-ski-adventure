@@ -1,5 +1,7 @@
 # Foray Ski Adventure — Japan Snowpack
 
+[![Test](https://github.com/cedjec-sketcher/foray-ski-adventure/actions/workflows/test.yml/badge.svg)](https://github.com/cedjec-sketcher/foray-ski-adventure/actions/workflows/test.yml)
+
 A single-page map of 20 Japanese ski resorts (Hokkaido to Nagano) on a real,
 pannable/zoomable [Leaflet](https://leafletjs.com/) + OpenStreetMap map,
 showing live snow depth and temperature from
@@ -60,6 +62,9 @@ Covers `lib/season_curve.rb` (pure curve math) and `lib/providers/open_meteo.rb`
 (with the network call stubbed, so it runs with no internet access). There
 are no client-side JS tests yet — see docs/PROPOSALS.md §3b for what's
 blocking that.
+
+`.github/workflows/test.yml` runs the same `rake test` on every push and pull
+request to `main`.
 
 ## Viewing it locally
 

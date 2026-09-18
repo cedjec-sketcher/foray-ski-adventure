@@ -180,12 +180,15 @@ built `index.html` would catch regressions a pure-function test can't. This
 is a heavier lift than (a) and (b) — worth treating as a phase-2 item rather
 than blocking on it.
 
-**c) CI.** A `.github/workflows/test.yml` running the Ruby suite (and the JS
-suite, once it exists) on every push/PR — fast, no network needed since the
-fetch is mocked. This can share infrastructure with the daily-snapshot
-workflow already proposed in the README: the same repo ends up with one
-scheduled workflow that fetches real data and one on-push workflow that
-runs tests against mocked data.
+**c) CI — done.** `.github/workflows/test.yml` runs `rake test` on every push
+and pull request to `main`, via `ruby/setup-ruby` — no Gemfile needed since
+`minitest` and `rake` are both default gems. Fast and network-free, same as
+running it locally, since §3a's suite already stubs the one network call.
+Once §3b's JS tests exist, add a second job (or step) to the same workflow
+rather than a new one. This can also share infrastructure with the
+daily-snapshot workflow already proposed in the README: the same repo ends
+up with one scheduled workflow that fetches real data and one on-push
+workflow that runs tests against mocked data.
 
 **d) Manual/visual QA.** Some things are impractical to fully automate —
 color legibility in both light and dark mode, chart label collisions, mobile
@@ -212,16 +215,16 @@ collide with the §1/§2/§3 chapter references used throughout this doc.
 
 **§3 Testing & quality assurance**
 1. ~~Ruby unit tests (§3a)~~ — done: `rake test`, 15 tests, 77 assertions.
-2. JS test exports (§3b) — needs the two real gaps described there fixed
+2. ~~CI (§3c)~~ — done: `.github/workflows/test.yml` runs `rake test` on
+   every push/PR to `main`.
+3. JS test exports (§3b) — needs the two real gaps described there fixed
    first (exports, and `tempToColor`'s DOM dependency), not just the §1
-   extraction, which turned out not to be enough on its own.
-3. CI (§3c) — the Ruby suite is fast and network-free (§3a's stubbing) and
-   could run on every push right now; still worth waiting for §2's provider
-   interface or the daily-snapshot workflow so there's a second thing for
-   the same CI setup to do.
+   extraction, which turned out not to be enough on its own. The only item
+   left unblocked in this chapter.
 
-If picking just one place to start: §3c, since §3a gave it something to run
-and it's a small addition on top of that.
+Left across all three chapters: §1's three smaller issues, §2's provider
+interface and config file, and §3b. None block each other — pick whichever
+is most useful next.
 
 Let me know which of these you'd like implemented first — happy to start
 with any one in isolation.
