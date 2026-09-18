@@ -6,32 +6,34 @@ Each section is ordered roughly quick-win-first.
 
 ## 1. Code structure & quality
 
-**Everything lives in one 798-line file.** `template.html` mixes CSS, markup,
-and ~450 lines of JS in a single inline `<script>`. Nothing is unit-testable
-without extracting it, and unrelated changes (say, a color tweak vs. a chart
-layout change) touch the same file.
-
-Proposed target layout:
+**Extraction — done.** `template.html` used to mix CSS, markup, and ~450
+lines of JS in a single inline `<script>`. It's now:
 
 ```
 assets/
-  app.js          # extracted client JS (see below)
+  app.js          # extracted client JS — internals unchanged, just relocated
   styles.css      # extracted CSS
 lib/
-  projection.rb   # pure map-projection math
   season_curve.rb # pure bell-curve / temperature-curve generation
   providers/
-    open_meteo.rb # live-data fetch, isolated behind a small interface
+    open_meteo.rb # live-data fetch, isolated so it's the one thing that
+                   # can fail over the network (not yet a swappable
+                   # "pick a provider" interface — that's §2)
 scripts/
-  build_data.rb   # thin orchestrator: calls lib/* in order, writes outputs
+  build_data.rb   # thin orchestrator: calls the two lib/ modules, writes outputs
 ```
 
-`index.html` would then be a small shell that references `assets/app.js` and
-`assets/styles.css` by `<script src>`/`<link>` rather than inlining them —
-only the generated JSON stays inlined, since that's the one thing that has to
-travel with the page. This is also a prerequisite for real unit testing (§3).
+(`lib/projection.rb`, originally proposed here, never got built — the
+Leaflet migration in §2 removed the map-projection code entirely before this
+extraction happened, so there was nothing left to extract.)
 
-**Other concrete issues, smaller but worth fixing alongside the above:**
+`index.html` now references `assets/app.js` and `assets/styles.css` by
+`<script src>`/`<link>` instead of inlining them — only the generated JSON
+stays inlined. This was a purely mechanical move: `app.js`'s internals are
+byte-for-byte the same logic that lived in the inline `<script>` before, so
+the three issues below are all still exactly as open as they were.
+
+**Still open — smaller issues, worth fixing but not blocking anything:**
 
 - `state` is a bare mutable object mutated from several places
   (`select`, `setMode`, the slider's `input` handler), each remembering to
@@ -51,13 +53,13 @@ travel with the page. This is also a prerequisite for real unit testing (§3).
   of three blocks, the third was caught by `grep`). A small build-time check
   (or generating all three from one source list) would catch that class of
   mistake automatically instead of by accident.
-- `scripts/build_data.rb` is one top-to-bottom script: network fetch,
-  projection math, and curve generation are interleaved, and there's no error
-  handling around the HTTP call — a network hiccup or malformed API response
-  raises an unhandled exception mid-script. Splitting into the `lib/` modules
-  above isolates the parts that can fail (network) from the parts that are
-  pure computation (projection, curves), and gives each its own place to add
-  a rescue/retry.
+
+One thing the extraction *did* resolve: `scripts/build_data.rb`'s network
+fetch and pure curve computation no longer sit in the same top-to-bottom
+script — `Providers::OpenMeteo#fetch` now raises a specific error on a
+malformed/mismatched response instead of failing obscurely partway through
+unrelated code. There's still no rescue/retry around it, but there's now an
+obvious, isolated place to add one.
 
 ## 2. Flexibility — data sources & map
 
@@ -123,32 +125,49 @@ hemisphere" a config change instead of a code change.
 
 There are currently zero automated tests. Two different things need covering:
 
-**a) `scripts/build_data.rb`'s computation.** Once the pure functions
-(projection, bell curve, temperature curve) live in `lib/` as proposed in
-§1, they're testable with Ruby's built-in `minitest` — no gems to install.
-Concretely, these are exactly the properties we hand-verified once already,
-by eye, mid-conversation — worth locking in as tests instead of re-checking
-by hand every time:
+**a) `scripts/build_data.rb`'s computation — ready to write now.**
+`lib/season_curve.rb` exists (§1) and is genuinely pure — no `document`, no
+network, just `Date` math — so it's directly testable with Ruby's built-in
+`minitest`, no gems to install, no further extraction needed. These are
+exactly the properties hand-verified once already, by eye, mid-conversation —
+worth locking in as tests instead of re-checking by hand every time:
 
 ```ruby
 # spec/season_curve_spec.rb (illustrative)
-assert_equal typical_peak_cm, bell(peak_offset, peak_offset) * typical_peak_cm
+assert_equal typical_peak_cm, SeasonCurve.bell(SeasonCurve::PEAK_OFFSET) * typical_peak_cm
 assert_equal typical_edge_c, temp_curve.first[1]   # season start ≈ mild
-assert_equal typical_min_c,  temp_curve_at(peak_offset)  # trough at peak
+assert_equal typical_min_c,  temp_curve_at(SeasonCurve::PEAK_OFFSET)  # trough at peak
 ```
 
-The network call should sit behind the provider interface from §2 so tests
-can inject a canned response instead of hitting Open-Meteo — faster, and CI
-doesn't need network access for this suite.
+`lib/providers/open_meteo.rb` also exists now (§1), as a plain
+`Providers::OpenMeteo#fetch(resorts)` method — not yet the swappable
+"pick a provider" interface proposed in §2, but already isolated enough that
+a test can stub `Net::HTTP.get` (or subclass and override `fetch`) to inject
+a canned response instead of hitting Open-Meteo. §2's fuller interface would
+make that cleaner, but nothing here is blocked on it.
 
-**b) The client-side JS.** Once the pure functions (`tempToColor`,
-`depthToRadius`, `hexToRgb`, `lerpColor`, `fmtDate`, `getDisplay`) are
-extracted to `assets/app.js` per §1, they can be tested directly with Node's
-built-in `node:test` + `node:assert` — again, no install, since they don't
-touch the DOM. This covers the same math already spot-checked by hand via the
-browser console during development: the radius floor and area-scaling curve,
-the exact interpolated RGB values at known temperatures, and the ≤0.05cm
-hollow-ring threshold.
+**b) The client-side JS — extracted, but not yet actually testable.**
+`assets/app.js` exists now (§1), but the move was purely mechanical: the
+pure-looking functions (`tempToColor`, `depthToRadius`, `hexToRgb`,
+`lerpColor`, `fmtDate`, `getDisplay`) are still closed over inside one IIFE
+with no exports, and the IIFE runs DOM/Leaflet setup code
+(`document.getElementById`, `L.map(...)`) the instant the file loads — so
+`require`-ing `assets/app.js` from a Node test would just throw. Two real
+gaps remain before `node:test` can reach any of this:
+
+- The functions need actual exports (e.g. `module.exports = {...}` guarded
+  by `typeof module !== 'undefined'`, so the browser build ignores it), split
+  out from the DOM-touching bootstrap code at the bottom of the file.
+- `tempToColor` specifically calls `cssVar()`, which reads
+  `getComputedStyle(document.documentElement)` — not available in plain
+  Node. Either the color functions take the three temperature-scale colors
+  as parameters instead of reading them from CSS internally, or the test
+  suite pulls in a DOM shim (`jsdom`) to supply `document`. Taking colors as
+  parameters is the smaller change and doesn't cost the browser build
+  anything.
+
+`depthToRadius`, `hexToRgb`, `lerpColor`, and `fmtDate` don't touch the DOM at
+all and could be exported and tested today with no other changes.
 
 For anything that *does* touch the DOM (do 20 markers render, does clicking
 one update the detail panel, does the mode toggle disable the slider), a
@@ -177,8 +196,9 @@ Grouped by the chapter it belongs to above, so the numbering here doesn't
 collide with the §1/§2/§3 chapter references used throughout this doc.
 
 **§1 Code structure & quality**
-1. Extract CSS/JS out of `template.html` — the one item other chapters
-   depend on (§3b needs it).
+1. ~~Extract CSS/JS out of `template.html`~~ — done.
+2. The three still-open smaller issues (`state` mutation, `innerHTML`
+   fragility, CSS-drift protection) — no dependency, do whenever it's useful.
 
 **§2 Flexibility — data sources & map**
 1. ~~Leaflet map~~ — done.
@@ -187,14 +207,16 @@ collide with the §1/§2/§3 chapter references used throughout this doc.
 3. Season-constants config file — no dependency, do whenever it's useful.
 
 **§3 Testing & quality assurance**
-1. Ruby unit tests for the already-verified math (§3a) — cheap, immediate
-   regression protection, no dependency on anything else.
-2. JS unit tests (§3b) — blocked on §1's extraction above.
+1. Ruby unit tests for the already-verified math (§3a) — ready to write now,
+   nothing left blocking it.
+2. JS test exports (§3b) — needs the two real gaps described there fixed
+   first (exports, and `tempToColor`'s DOM dependency), not just the §1
+   extraction, which turned out not to be enough on its own.
 3. CI (§3c) — do once §2's provider interface or the daily-snapshot workflow
    gives it something concrete to run against.
 
-If picking just one place to start: §1's extraction, since it's the only
-item blocking something else (§3b).
+If picking just one place to start: §3a, since it's ready to write with
+nothing left in the way.
 
 Let me know which of these you'd like implemented first — happy to start
 with any one in isolation.

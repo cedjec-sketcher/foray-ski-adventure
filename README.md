@@ -14,16 +14,24 @@ an illustrative typical-season pattern (Dec–Apr) for each resort.
 
 ## Files
 
-- `index.html` — the built, ready-to-open page (also the GitHub Pages entry point)
+- `index.html` — the built, ready-to-open page (also the GitHub Pages entry
+  point); references `assets/` and embeds only the generated JSON
 - `template.html` — the source template; has a `__SKI_DATA_JSON__` placeholder
   where the data gets spliced in
+- `assets/app.js` — all client-side rendering and interaction (map, list,
+  chart, mode/date controls, the live-fetch call)
+- `assets/styles.css` — all styling, including the light/dark theme tokens
 - `data/resorts.json` — resort metadata (name, region, coordinates, elevation,
   typical peak depth, typical winter temperature range) — edit this to add or
   adjust resorts
 - `data/ski_data.json` — generated output (live snow/temp fetch + seasonal
   curves); this is what `index.html` embeds
-- `scripts/build_data.rb` — fetches live conditions from Open-Meteo, generates
-  the illustrative seasonal curves, and rebuilds `index.html` from
+- `lib/season_curve.rb` — pure bell-curve/temperature-curve generation for the
+  illustrative typical-season pattern
+- `lib/providers/open_meteo.rb` — the Open-Meteo network fetch, isolated so
+  it's the one thing in the pipeline that can fail over the network
+- `scripts/build_data.rb` — thin orchestrator: calls the two `lib/` modules
+  above, writes `data/ski_data.json`, and rebuilds `index.html` from
   `template.html`
 
 ## Regenerating the data

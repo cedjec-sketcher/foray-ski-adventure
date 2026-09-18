@@ -22,22 +22,29 @@ no live fetch, since it has no other option.
 ```mermaid
 flowchart LR
   R[data/resorts.json<br/>resort metadata + curve tuning] --> B(scripts/build_data.rb)
-  OM[(Open-Meteo API<br/>live snow_depth + temperature)] --> B
+  P[lib/providers/open_meteo.rb] --> B
+  C[lib/season_curve.rb] --> B
+  OM[(Open-Meteo API<br/>live snow_depth + temperature)] --> P
   B --> S[data/ski_data.json<br/>generated dataset]
   S --> T[template.html<br/>has a __SKI_DATA_JSON__ placeholder]
   T --> I[index.html<br/>final page, data inlined]
 ```
 
-`scripts/build_data.rb` does three things, in order, every time it runs:
+`scripts/build_data.rb` is a thin orchestrator — the actual work is in two
+`lib/` modules it calls in order:
 
-1. **Fetch live conditions.** One batched HTTPS request to Open-Meteo for all
-   resorts' current `snow_depth` and `temperature_2m`.
-2. **Generate the illustrative season curve.** For each resort, a bell curve
-   (peaking at each resort's own `typical_peak_cm` on a shared mid-February
-   date) and a parabolic temperature curve (mild at the season edges, coldest
-   at that same date) are sampled every 3 days from Dec 1 to Apr 30. This is
-   synthetic — clearly labeled as such in the UI — because no real historical
-   time series exists yet.
+1. **Fetch live conditions.** `Providers::OpenMeteo#fetch` makes one batched
+   HTTPS request to Open-Meteo for all resorts' current `snow_depth` and
+   `temperature_2m`. It's the one part of the pipeline that touches the
+   network, isolated so a future test can stub it instead of hitting the
+   real API.
+2. **Generate the illustrative season curve.** `SeasonCurve.generate` is pure
+   computation, no I/O: for each resort, a bell curve (peaking at its own
+   `typical_peak_cm` on a shared mid-February date) and a parabolic
+   temperature curve (mild at the season edges, coldest at that same date),
+   sampled every 3 days from Dec 1 to Apr 30. This is synthetic — clearly
+   labeled as such in the UI — because no real historical time series
+   exists yet.
 3. **Write outputs.** `data/ski_data.json` (the raw generated dataset, useful
    on its own) and `index.html` (the template with that JSON spliced into the
    `<script type="application/json">` placeholder).
@@ -47,10 +54,13 @@ There's no map-projection step here anymore — resorts carry their raw
 
 ## Client-side render pipeline
 
-Everything after that is a single inline `<script>` in `index.html`, an IIFE.
-The only external dependency is [Leaflet](https://leafletjs.com/) (loaded from
-cdnjs), which owns the map itself; everything else — state, rendering, the
-chart — is plain DOM/SVG with no framework. There's one mutable `state` object
+Everything after that lives in `assets/app.js` (referenced from `index.html`
+via `<script src>`) and `assets/styles.css` — only the generated JSON stays
+inlined in the page, since that's the one thing that has to travel with it.
+`app.js` is a single IIFE with no build step; the only external dependency is
+[Leaflet](https://leafletjs.com/) (loaded from cdnjs), which owns the map
+itself, while everything else — state, rendering, the chart — is plain
+DOM/SVG with no framework. There's one mutable `state` object
 (`{ mode, dayIndex, selectedId }`) and a `refreshAll()` function that
 re-derives all on-screen output from `state` + the embedded `DATA`:
 
@@ -124,6 +134,14 @@ at this scale (20 resorts, a handful of DOM nodes each).
   possible under the Claude Artifact sandbox, which blocks `fetch`/XHR to
   external hosts — that version still relies entirely on the baked-in
   snapshot.
+- **CSS and JS live in their own files, not inlined in the page.** The
+  extraction is purely mechanical — `assets/app.js`'s internals are unchanged
+  from when they lived in `template.html`'s inline `<script>` — but it's what
+  makes the pure functions in it (`tempToColor`, `depthToRadius`, etc.)
+  reachable for a future test runner at all. The `state`-mutation pattern and
+  the string-concatenated `innerHTML` in `renderList`/`buildDetailSkeleton`
+  are still exactly as fragile as before the extraction; only the file
+  boundary changed (see PROPOSALS.md §1 for what's still open there).
 - **The season curve is synthetic, not measured.** It exists to make the
   visualization meaningful during the off-season (when live depth is 0cm
   almost everywhere) and to preview what the size/color encoding looks like
@@ -145,6 +163,7 @@ at this scale (20 resorts, a handful of DOM nodes each).
   at this project's traffic, worth knowing about if that changes.
 - No real historical data — the "typical season" curve is a hand-tuned bell
   curve, not recorded observations.
-- No automated tests (see PROPOSALS.md, section 3).
-- All logic — CSS, HTML, and ~450 lines of JS — lives in one file
-  (`template.html`), with no module boundaries.
+- No automated tests yet — the code is now organized so they're straightforward
+  to add (`lib/season_curve.rb` and `lib/providers/open_meteo.rb` on the Ruby
+  side, the pure functions in `assets/app.js` on the JS side), but none exist
+  (see PROPOSALS.md, section 3).
