@@ -33,6 +33,8 @@ an illustrative typical-season pattern (Dec–Apr) for each resort.
 - `scripts/build_data.rb` — thin orchestrator: calls the two `lib/` modules
   above, writes `data/ski_data.json`, and rebuilds `index.html` from
   `template.html`
+- `test/` — Ruby unit tests for the `lib/` modules (`rake test` to run them)
+- `Rakefile` — defines the `rake test` task
 
 ## Regenerating the data
 
@@ -44,6 +46,20 @@ ruby scripts/build_data.rb
 
 This refreshes `data/ski_data.json` with a fresh live snow/temperature fetch
 and rewrites `index.html`.
+
+## Running the tests
+
+Ruby's `minitest` and `rake` both ship with the system Ruby on macOS — nothing
+to install:
+
+```bash
+rake test
+```
+
+Covers `lib/season_curve.rb` (pure curve math) and `lib/providers/open_meteo.rb`
+(with the network call stubbed, so it runs with no internet access). There
+are no client-side JS tests yet — see docs/PROPOSALS.md §3b for what's
+blocking that.
 
 ## Viewing it locally
 

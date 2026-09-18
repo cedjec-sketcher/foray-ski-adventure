@@ -1,7 +1,8 @@
 # Improvement proposals
 
 Companion to [ARCHITECTURE.md](./ARCHITECTURE.md), which describes the system
-as it stands. This document proposes changes — none of it is implemented yet.
+as it stands. Started as an all-proposed wishlist; items get marked done in
+place as they land, so this doubles as a running log of what changed and why.
 Each section is ordered roughly quick-win-first.
 
 ## 1. Code structure & quality
@@ -123,28 +124,31 @@ hemisphere" a config change instead of a code change.
 
 ## 3. Testing & quality assurance
 
-There are currently zero automated tests. Two different things need covering:
+**a) `scripts/build_data.rb`'s computation — done.** `test/season_curve_test.rb`
+and `test/providers/open_meteo_test.rb` exist, run via `rake test` (Ruby's
+bundled `minitest` and `rake` — nothing to install). 15 tests, 77 assertions,
+covering exactly the properties hand-verified once already, by eye,
+mid-conversation, plus the provider's error paths:
 
-**a) `scripts/build_data.rb`'s computation — ready to write now.**
-`lib/season_curve.rb` exists (§1) and is genuinely pure — no `document`, no
-network, just `Date` math — so it's directly testable with Ruby's built-in
-`minitest`, no gems to install, no further extraction needed. These are
-exactly the properties hand-verified once already, by eye, mid-conversation —
-worth locking in as tests instead of re-checking by hand every time:
+- `SeasonCurve.bell` peaks at exactly 1.0 on the peak offset, is symmetric
+  around it, and decreases moving away from it.
+- `SeasonCurve.temperature_at` hits the edge value at both season boundaries,
+  the min value at the peak offset, and clamps rather than extrapolating
+  past the season.
+- `SeasonCurve.generate`'s output matches the known values from earlier in
+  the project exactly (54.9cm at both season edges, 220.0cm/-12.0°C at the
+  peak, for a Niseko-like resort) and never goes negative.
+- `Providers::OpenMeteo#fetch` — tested with `Net::HTTP.get` stubbed via
+  `Net::HTTP.stub(:get, canned_json) { ... }` (from `minitest/mock`, also
+  bundled — no network access needed to run this suite). Covers the happy
+  path (unit conversion, rounding, order preserved), and both error paths
+  (a too-short response, a non-array error response) raising with a message
+  that actually says what went wrong.
 
-```ruby
-# spec/season_curve_spec.rb (illustrative)
-assert_equal typical_peak_cm, SeasonCurve.bell(SeasonCurve::PEAK_OFFSET) * typical_peak_cm
-assert_equal typical_edge_c, temp_curve.first[1]   # season start ≈ mild
-assert_equal typical_min_c,  temp_curve_at(SeasonCurve::PEAK_OFFSET)  # trough at peak
-```
-
-`lib/providers/open_meteo.rb` also exists now (§1), as a plain
-`Providers::OpenMeteo#fetch(resorts)` method — not yet the swappable
-"pick a provider" interface proposed in §2, but already isolated enough that
-a test can stub `Net::HTTP.get` (or subclass and override `fetch`) to inject
-a canned response instead of hitting Open-Meteo. §2's fuller interface would
-make that cleaner, but nothing here is blocked on it.
+`Providers::OpenMeteo#fetch` is still a plain method, not yet the swappable
+"pick a provider" interface proposed in §2 — the test stubs `Net::HTTP.get`
+directly rather than injecting a fake provider. §2's fuller interface would
+make that cleaner, but nothing here was blocked on it.
 
 **b) The client-side JS — extracted, but not yet actually testable.**
 `assets/app.js` exists now (§1), but the move was purely mechanical: the
@@ -207,16 +211,17 @@ collide with the §1/§2/§3 chapter references used throughout this doc.
 3. Season-constants config file — no dependency, do whenever it's useful.
 
 **§3 Testing & quality assurance**
-1. Ruby unit tests for the already-verified math (§3a) — ready to write now,
-   nothing left blocking it.
+1. ~~Ruby unit tests (§3a)~~ — done: `rake test`, 15 tests, 77 assertions.
 2. JS test exports (§3b) — needs the two real gaps described there fixed
    first (exports, and `tempToColor`'s DOM dependency), not just the §1
    extraction, which turned out not to be enough on its own.
-3. CI (§3c) — do once §2's provider interface or the daily-snapshot workflow
-   gives it something concrete to run against.
+3. CI (§3c) — the Ruby suite is fast and network-free (§3a's stubbing) and
+   could run on every push right now; still worth waiting for §2's provider
+   interface or the daily-snapshot workflow so there's a second thing for
+   the same CI setup to do.
 
-If picking just one place to start: §3a, since it's ready to write with
-nothing left in the way.
+If picking just one place to start: §3c, since §3a gave it something to run
+and it's a small addition on top of that.
 
 Let me know which of these you'd like implemented first — happy to start
 with any one in isolation.
