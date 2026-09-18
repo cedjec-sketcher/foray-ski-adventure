@@ -233,15 +233,28 @@
     var neutral = cssVar('--ink-3');
     var examples = [0, 50, 150, 300];
     var xs = [16, 54, 100, 156];
+
+    // All circles share one center line (cy), so every label needs to clear
+    // whichever example draws the biggest circle, not just its own — using
+    // a fixed offset from cy meant for the smallest circle let the largest
+    // one (300cm) grow right through its own label.
+    var maxR = Math.max.apply(null, examples.map(depthToRadius));
+    var topPad = 3, labelGap = 12, bottomPad = 4;
+    var cy = topPad + maxR;
+    var labelY = cy + maxR + labelGap;
+    var totalHeight = labelY + bottomPad;
+    svgEl.setAttribute('viewBox', '0 0 180 ' + totalHeight);
+    svgEl.setAttribute('height', totalHeight);
+
     examples.forEach(function(v, i){
       var r = depthToRadius(v);
       var c = document.createElementNS(svgNS,'circle');
-      c.setAttribute('cx', xs[i]); c.setAttribute('cy', 30); c.setAttribute('r', r);
+      c.setAttribute('cx', xs[i]); c.setAttribute('cy', cy); c.setAttribute('r', r);
       if(v === 0){ c.setAttribute('fill','none'); c.setAttribute('stroke', neutral); c.setAttribute('stroke-width', 1.8); }
       else { c.setAttribute('fill', neutral); }
       svgEl.appendChild(c);
       var lbl = document.createElementNS(svgNS,'text');
-      lbl.setAttribute('x', xs[i]); lbl.setAttribute('y', 44);
+      lbl.setAttribute('x', xs[i]); lbl.setAttribute('y', labelY);
       lbl.setAttribute('text-anchor','middle');
       lbl.setAttribute('font-family','IBM Plex Mono, monospace');
       lbl.setAttribute('font-size','9');
