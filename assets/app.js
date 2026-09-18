@@ -1,21 +1,18 @@
 (function(){
   "use strict";
-  var DATA = JSON.parse(document.getElementById('ski-data').textContent);
+
+  // ---- pure config + helpers ----
+  // Nothing below this point touches the DOM, so it's safe for a Node test
+  // to require() this file directly (see the module.exports guard at the
+  // bottom). Everything that does touch the DOM/Leaflet/fetch lives inside
+  // the `typeof document !== 'undefined'` guard further down, which a
+  // require() in Node skips entirely.
   var REGION_ORDER = ["Hokkaido","Tohoku","Nagano","Niigata"];
   var REGION_VAR = {Hokkaido:"--hokkaido", Tohoku:"--tohoku", Nagano:"--nagano", Niigata:"--niigata"};
   var MAX_PEAK = 320; // fixed y-domain so charts are comparable across resorts (Hakkoda tops out near 300)
   var DEPTH_DOMAIN = 300; // marker area scale domain
   var TEMP_COLD = -16, TEMP_MID = 0, TEMP_WARM = 20;
   var R_MIN = 6.5, R_MAX = 15;
-  var DATES = DATA.resorts[0].typical_season_cm.map(function(p){ return p[0]; });
-  var PEAK_INDEX = 25; // mid-Feb, index into the 3-day-step curve arrays
-
-  var state = { mode: 'season', dayIndex: PEAK_INDEX, selectedId: null };
-
-  function cssVar(name){
-    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  }
-  function regionColor(region){ return cssVar(REGION_VAR[region] || "--accent"); }
 
   function hexToRgb(hex){
     hex = hex.replace('#','');
@@ -30,16 +27,19 @@
     var bl = Math.round(a[2]+(b[2]-a[2])*t);
     return "rgb("+r+","+g+","+bl+")";
   }
-  function tempToColor(t){
+  // coldHex/midHex/warmHex are passed in (rather than read from CSS custom
+  // properties internally) specifically so this stays callable with no DOM
+  // at all — the one call site below supplies the live theme colors via
+  // cssVar(), a test supplies literal hex strings.
+  function tempToColor(t, coldHex, midHex, warmHex){
     // squared easing keeps hues saturated away from the pole and reserves
     // the neutral midpoint for values genuinely close to freezing
-    var cold = cssVar('--temp-cold'), mid = cssVar('--temp-mid'), warm = cssVar('--temp-warm');
     if(t <= TEMP_MID){
       var t1 = Math.max(0, Math.min(1, (t - TEMP_COLD) / (TEMP_MID - TEMP_COLD)));
-      return lerpColor(cold, mid, t1*t1);
+      return lerpColor(coldHex, midHex, t1*t1);
     } else {
       var t2 = Math.max(0, Math.min(1, (t - TEMP_MID) / (TEMP_WARM - TEMP_MID)));
-      return lerpColor(mid, warm, t2*t2);
+      return lerpColor(midHex, warmHex, t2*t2);
     }
   }
   function depthToRadius(depth){
@@ -56,6 +56,19 @@
     var d = new Date(iso.replace(" ","T"));
     return d.toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZoneName:"short"});
   }
+
+  if (typeof document !== 'undefined') {
+  // ---- everything below touches the DOM, Leaflet, or fetch ----
+  var DATA = JSON.parse(document.getElementById('ski-data').textContent);
+  var DATES = DATA.resorts[0].typical_season_cm.map(function(p){ return p[0]; });
+  var PEAK_INDEX = 25; // mid-Feb, index into the 3-day-step curve arrays
+
+  var state = { mode: 'season', dayIndex: PEAK_INDEX, selectedId: null };
+
+  function cssVar(name){
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+  function regionColor(region){ return cssVar(REGION_VAR[region] || "--accent"); }
 
   function getDisplay(r){
     if(state.mode === 'live'){
@@ -181,7 +194,7 @@
       var disp = getDisplay(r);
       var m = markerEls[r.id];
       var radius = depthToRadius(disp.depth);
-      var color = tempToColor(disp.temp);
+      var color = tempToColor(disp.temp, cssVar('--temp-cold'), cssVar('--temp-mid'), cssVar('--temp-warm'));
       if(disp.depth <= 0.05){
         m.setStyle({ radius: radius, color: color, weight: 2.2, fillOpacity: 0 });
       } else {
@@ -515,4 +528,10 @@
   setMode('season');
   select("niseko");
   fetchLiveConditions();
+  } // end of the `typeof document !== 'undefined'` guard
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { hexToRgb: hexToRgb, lerpColor: lerpColor, tempToColor: tempToColor,
+      depthToRadius: depthToRadius, fmtDate: fmtDate, fmtFetched: fmtFetched };
+  }
 })();

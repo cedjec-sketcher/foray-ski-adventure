@@ -35,7 +35,10 @@ an illustrative typical-season pattern (Dec–Apr) for each resort.
 - `scripts/build_data.rb` — thin orchestrator: calls the two `lib/` modules
   above, writes `data/ski_data.json`, and rebuilds `index.html` from
   `template.html`
-- `test/` — Ruby unit tests for the `lib/` modules (`rake test` to run them)
+- `test/*.rb`, `test/providers/*.rb` — Ruby unit tests for the `lib/` modules
+  (`rake test` to run them)
+- `test/js/app.test.js` — Node unit tests for `assets/app.js`'s pure
+  functions (`node --test test/js` to run them)
 - `Rakefile` — defines the `rake test` task
 
 ## Regenerating the data
@@ -59,12 +62,22 @@ rake test
 ```
 
 Covers `lib/season_curve.rb` (pure curve math) and `lib/providers/open_meteo.rb`
-(with the network call stubbed, so it runs with no internet access). There
-are no client-side JS tests yet — see docs/PROPOSALS.md §3b for what's
-blocking that.
+(with the network call stubbed, so it runs with no internet access).
 
-`.github/workflows/test.yml` runs the same `rake test` on every push and pull
-request to `main`.
+Node's built-in test runner (Node 18+) covers `assets/app.js`'s pure
+functions — `hexToRgb`, `lerpColor`, `tempToColor`, `depthToRadius`,
+`fmtDate`, `fmtFetched`:
+
+```bash
+node --test test/js
+```
+
+Nothing else needed — no `npm install`, no test framework. `getDisplay` and
+anything that touches the DOM (the map, the list, the chart) aren't covered
+by either suite; see docs/PROPOSALS.md §3b.
+
+`.github/workflows/test.yml` runs both suites, as separate jobs, on every
+push and pull request to `main`.
 
 ## Viewing it locally
 

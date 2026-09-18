@@ -135,13 +135,31 @@ at this scale (20 resorts, a handful of DOM nodes each).
   external hosts — that version still relies entirely on the baked-in
   snapshot.
 - **CSS and JS live in their own files, not inlined in the page.** The
-  extraction is purely mechanical — `assets/app.js`'s internals are unchanged
-  from when they lived in `template.html`'s inline `<script>` — but it's what
-  makes the pure functions in it (`tempToColor`, `depthToRadius`, etc.)
-  reachable for a future test runner at all. The `state`-mutation pattern and
-  the string-concatenated `innerHTML` in `renderList`/`buildDetailSkeleton`
-  are still exactly as fragile as before the extraction; only the file
-  boundary changed (see PROPOSALS.md §1 for what's still open there).
+  extraction itself was purely mechanical — `assets/app.js`'s internals were
+  unchanged from when they lived in `template.html`'s inline `<script>`. The
+  `state`-mutation pattern and the string-concatenated `innerHTML` in
+  `renderList`/`buildDetailSkeleton` are still exactly as fragile as before;
+  only the file boundary changed (see PROPOSALS.md §1 for what's still open
+  there).
+- **`assets/app.js` splits into a pure section and a DOM-guarded section, so
+  it's `require()`-able from Node.** Everything that touches `document`,
+  Leaflet, or `fetch` — the large majority of the file — is wrapped in
+  `if (typeof document !== 'undefined') { ... }`; the pure functions
+  (`hexToRgb`, `lerpColor`, `tempToColor`, `depthToRadius`, `fmtDate`,
+  `fmtFetched`) sit outside that guard, with a
+  `typeof module !== 'undefined'` check at the bottom exporting them for
+  Node. In a browser, `module` doesn't exist so the export is skipped and
+  the DOM guard passes through transparently; in Node, `document` doesn't
+  exist so the entire bootstrap section — map setup, event listeners, the
+  live fetch, all of it — never runs. `tempToColor` also changed shape: it
+  takes the three temperature-scale colors as parameters now instead of
+  reading them via `cssVar()` internally, since a color function that reads
+  `document.documentElement`'s computed style can't be pure. Verified
+  byte-identical output in the browser before and after this change
+  (Asahidake at -16°C still renders as exactly `rgb(47,131,224)`).
+  `getDisplay` stays inside the guard — it closes over `state`/`DATES`,
+  which only exist there — so it's still not test-reachable; see
+  PROPOSALS.md §3b.
 - **The season curve is synthetic, not measured.** It exists to make the
   visualization meaningful during the off-season (when live depth is 0cm
   almost everywhere) and to preview what the size/color encoding looks like
@@ -164,8 +182,11 @@ at this scale (20 resorts, a handful of DOM nodes each).
 - No real historical data — the "typical season" curve is a hand-tuned bell
   curve, not recorded observations.
 - `rake test` covers the Ruby side (`lib/season_curve.rb` and
-  `lib/providers/open_meteo.rb`, the latter with the network call stubbed),
-  and `.github/workflows/test.yml` runs it on every push and pull request to
-  `main`. Nothing covers `assets/app.js` yet — its functions aren't exported,
-  and `tempToColor` still reads CSS custom properties via `document`, which
-  plain Node can't do (see PROPOSALS.md §3b for what's actually blocking it).
+  `lib/providers/open_meteo.rb`, the latter with the network call stubbed)
+  and `node --test test/js` covers `assets/app.js`'s pure functions.
+  `.github/workflows/test.yml` runs both, as separate jobs, on every push
+  and pull request to `main`. Not covered: `getDisplay` (closes over
+  DOM-guarded state) and anything that needs a real DOM — 20 markers
+  actually rendering, clicking one actually updating the detail panel, and
+  so on. That's still manual (or a future headless-browser smoke test, see
+  PROPOSALS.md §3b).

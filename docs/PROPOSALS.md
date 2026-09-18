@@ -150,35 +150,46 @@ mid-conversation, plus the provider's error paths:
 directly rather than injecting a fake provider. §2's fuller interface would
 make that cleaner, but nothing here was blocked on it.
 
-**b) The client-side JS — extracted, but not yet actually testable.**
-`assets/app.js` exists now (§1), but the move was purely mechanical: the
-pure-looking functions (`tempToColor`, `depthToRadius`, `hexToRgb`,
-`lerpColor`, `fmtDate`, `getDisplay`) are still closed over inside one IIFE
-with no exports, and the IIFE runs DOM/Leaflet setup code
-(`document.getElementById`, `L.map(...)`) the instant the file loads — so
-`require`-ing `assets/app.js` from a Node test would just throw. Two real
-gaps remain before `node:test` can reach any of this:
+**b) The client-side JS — done, for the genuinely pure functions.**
+The two real gaps identified here have both been closed:
 
-- The functions need actual exports (e.g. `module.exports = {...}` guarded
-  by `typeof module !== 'undefined'`, so the browser build ignores it), split
-  out from the DOM-touching bootstrap code at the bottom of the file.
-- `tempToColor` specifically calls `cssVar()`, which reads
-  `getComputedStyle(document.documentElement)` — not available in plain
-  Node. Either the color functions take the three temperature-scale colors
-  as parameters instead of reading them from CSS internally, or the test
-  suite pulls in a DOM shim (`jsdom`) to supply `document`. Taking colors as
-  parameters is the smaller change and doesn't cost the browser build
-  anything.
+- `assets/app.js` now has a real split: the pure config and functions
+  (`hexToRgb`, `lerpColor`, `tempToColor`, `depthToRadius`, `fmtDate`,
+  `fmtFetched`) sit at the top of the file, outside any DOM dependency.
+  Everything that touches `document`, Leaflet, or `fetch` — including
+  `getDisplay`, which closes over `state`/`DATES` — is now wrapped in
+  `if (typeof document !== 'undefined') { ... }`, and a
+  `if (typeof module !== 'undefined' && module.exports) { module.exports = {...} }`
+  guard at the bottom exports the pure functions. In a browser, `document`
+  exists and `module` doesn't, so the page behaves exactly as before (byte-
+  identical output verified locally before and after: the same
+  `rgb(47,131,224)` for Asahidake at -16°C as was hand-verified earlier).
+  In Node, `document` doesn't exist, so the whole DOM-touching block is
+  skipped and only the pure functions get defined and exported — no jsdom
+  needed.
+- `tempToColor` takes the three temperature-scale colors as parameters now
+  instead of reading them from CSS via `cssVar()` internally — the smaller
+  change, as expected, and it cost the browser build nothing: the one call
+  site in `renderMarkers()` just passes `cssVar('--temp-cold')` etc.
+  explicitly.
 
-`depthToRadius`, `hexToRgb`, `lerpColor`, and `fmtDate` don't touch the DOM at
-all and could be exported and tested today with no other changes.
+`test/js/app.test.js` covers all six exported functions with `node:test` —
+17 tests, including the exact-value regression tests for the area-scaling
+formula and the squared-easing color fix (`-8°C → rgb(71,134,201)`, matching
+what was hand-verified via the browser console earlier in the project).
+Run via `node --test test/js`; wired into CI as a second job alongside the
+Ruby suite.
 
-For anything that *does* touch the DOM (do 20 markers render, does clicking
-one update the detail panel, does the mode toggle disable the slider), a
-headless-browser smoke test (Playwright is the common choice) driving the
-built `index.html` would catch regressions a pure-function test can't. This
-is a heavier lift than (a) and (b) — worth treating as a phase-2 item rather
-than blocking on it.
+`getDisplay` is not covered — it closes over `state`/`DATES`/`DATA`, which
+only exist inside the DOM-guarded section, so testing it would mean either
+injecting that state explicitly (a real refactor, not just an export) or a
+DOM shim. Not done here; a reasonable next step if this suite grows.
+
+For anything that touches the DOM directly (do 20 markers render, does
+clicking one update the detail panel, does the mode toggle disable the
+slider), a headless-browser smoke test (Playwright is the common choice)
+driving the built `index.html` would catch regressions a pure-function test
+can't. Still a heavier lift, still a phase-2 item.
 
 **c) CI — done.** `.github/workflows/test.yml` runs `rake test` on every push
 and pull request to `main`, via `ruby/setup-ruby` — no Gemfile needed since
@@ -215,16 +226,17 @@ collide with the §1/§2/§3 chapter references used throughout this doc.
 
 **§3 Testing & quality assurance**
 1. ~~Ruby unit tests (§3a)~~ — done: `rake test`, 15 tests, 77 assertions.
-2. ~~CI (§3c)~~ — done: `.github/workflows/test.yml` runs `rake test` on
-   every push/PR to `main`.
-3. JS test exports (§3b) — needs the two real gaps described there fixed
-   first (exports, and `tempToColor`'s DOM dependency), not just the §1
-   extraction, which turned out not to be enough on its own. The only item
-   left unblocked in this chapter.
+2. ~~JS test exports (§3b)~~ — done: `node --test test/js`, 17 tests, for
+   the genuinely pure functions (`getDisplay` still isn't reachable — see §3b).
+3. ~~CI (§3c)~~ — done: `.github/workflows/test.yml` runs both suites (a
+   `test-ruby` job and a `test-js` job) on every push/PR to `main`.
 
-Left across all three chapters: §1's three smaller issues, §2's provider
-interface and config file, and §3b. None block each other — pick whichever
-is most useful next.
+All three items in this chapter are done, except the manual QA checklist
+(§3d) and the headless-browser smoke test mentioned in §3b, neither of which
+were tracked here as numbered items.
+
+Left across §1 and §2: §1's three smaller issues and §2's provider interface
+and config file. None block each other — pick whichever is most useful next.
 
 Let me know which of these you'd like implemented first — happy to start
 with any one in isolation.
