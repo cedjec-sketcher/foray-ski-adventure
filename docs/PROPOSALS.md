@@ -93,24 +93,30 @@ elevation) versus *illustrative-curve tuning knobs* (`typical_peak_cm`,
 tuning knobs stop being needed for resorts that have it — separating them now
 means that transition doesn't require reshaping the resort list itself.
 
-**Map.** The coastline and every resort's `(x, y)` are baked into
-`data/ski_data.json` by one hand-rolled projection, computed once, with no
-pan/zoom. That's the right choice *for the Claude Artifact*, which blocks
-tile-image loading — but it's a real limitation once the site is hosted on
-GitHub Pages, where that restriction doesn't apply.
+**Map — done.** `index.html` (the GitHub Pages version) now renders
+[Leaflet](https://leafletjs.com/) + OpenStreetMap tiles instead of a baked
+SVG coastline, with resort coordinates read straight from `lat`/`lon` — no
+more build-time projection step at all. This fixed a real problem, not just
+a cosmetic one: several resorts (the Nagano/Niigata cluster especially) sat
+close enough to overlap into an unclickable clump on the old static map, and
+there was no way to zoom in and separate them. The Claude Artifact version
+still runs the old static-SVG renderer, since its sandbox still blocks tile
+loading — the two deployments have now genuinely diverged, worth remembering
+if either one gets touched in isolation.
 
-Proposed: keep the current static-SVG renderer as the default (it's
-dependency-free and works offline/sandboxed), and add a second entry point —
-e.g. `map.html` — that renders the same `data/ski_data.json` through
-[Leaflet](https://leafletjs.com/) with real OpenStreetMap tiles, giving real
-pan/zoom and room to add more resorts without re-tuning the projection's
-padding. Both pages would read the same generated JSON, so none of the
-build-time data logic needs to change — only which renderer consumes it.
+Two things worth knowing about the implementation: dark mode is a CSS
+`invert()` filter on the one OpenStreetMap tile layer rather than a second
+"dark" tile provider — a free CartoDB dark-tile endpoint was tried first and
+started requiring an API key mid-implementation, which is exactly the
+third-party-dependency risk this section originally warned about. And
+scroll-wheel zoom is deliberately disabled (the zoom buttons, double-click,
+and touch pinch-zoom cover it) since a map that captures the mouse wheel
+fights the page's own scrolling.
 
-Smaller flexibility win: the projection constants (`pad`, `view_w`, `view_h`)
-and season constants (`season_start`, `season_end`, `peak_date`, the bell
-curve's `width`) are hardcoded in `build_data.rb`. Pulling them into a small
-`config.json` would make "adapt this for a different mountain range or
+Smaller flexibility win, still open: season constants (`season_start`,
+`season_end`, `peak_date`, the bell curve's `width`) are hardcoded in
+`build_data.rb`. Pulling them into a small `config.json` would make
+"adapt this for a different mountain range or
 hemisphere" a config change instead of a code change.
 
 ## 3. Testing & quality assurance
@@ -167,14 +173,15 @@ against the known-correct formulas) as a short, repeatable
 
 ## Suggested order
 
-1. Extract CSS/JS out of `template.html` (§1) — unlocks everything else.
-2. Add the Ruby unit tests for the already-verified math (§3a) — cheap,
+1. ~~Leaflet map~~ — done (see §2, "Map — done").
+2. Extract CSS/JS out of `template.html` (§1) — unlocks everything else.
+3. Add the Ruby unit tests for the already-verified math (§3a) — cheap,
    immediate regression protection.
-3. Add the JS unit tests once extraction is done (§3b).
-4. Introduce the provider interface (§2) — needed before a second data source
+4. Add the JS unit tests once extraction is done (§3b).
+5. Introduce the provider interface (§2) — needed before a second data source
    or the historical-archive workflow makes sense.
-5. Leaflet map entry point and CI (§2, §3c) — bigger lifts, do when there's a
-   concrete reason to need them (e.g., moving to GitHub Pages).
+6. CI (§3c) — do when there's a concrete reason to need it (e.g., the
+   provider interface or the daily-snapshot workflow landing).
 
 Let me know which of these you'd like implemented first — happy to start
 with any one in isolation.

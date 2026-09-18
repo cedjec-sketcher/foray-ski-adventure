@@ -27,65 +27,6 @@ end
 STDERR.puts "Sample: #{resorts[0]}"
 STDERR.puts "Fetched at: #{fetched_at}"
 
-geo = JSON.parse(File.read(File.join(DATA_DIR, "japan_boundary.geojson")))
-feature = geo["features"][0]
-polys = feature["geometry"]["coordinates"] # MultiPolygon
-
-all_lons = []
-all_lats = []
-polys.each { |poly| poly.each { |ring| ring.each { |pt| all_lons << pt[0]; all_lats << pt[1] } } }
-resorts.each { |r| all_lons << r["lon"]; all_lats << r["lat"] }
-
-lon_min, lon_max = all_lons.min, all_lons.max
-lat_min, lat_max = all_lats.min, all_lats.max
-mean_lat_rad = ((lat_min + lat_max) / 2.0) * Math::PI / 180.0
-cos_corr = Math.cos(mean_lat_rad)
-
-pad = 30
-view_w = 620
-view_h = 760
-
-proj_lon_min = lon_min * cos_corr
-proj_lon_max = lon_max * cos_corr
-span_x = proj_lon_max - proj_lon_min
-span_y = lat_max - lat_min
-
-scale = [(view_w - 2*pad) / span_x, (view_h - 2*pad) / span_y].min
-
-project = lambda do |lon, lat|
-  x = (lon * cos_corr - proj_lon_min) * scale + pad
-  y = (lat_max - lat) * scale + pad
-  [x, y]
-end
-
-def ring_to_path(ring, project)
-  pts = ring.map { |lon, lat| project.call(lon, lat) }
-  "M " + pts.map { |x, y| "%.1f,%.1f" % [x, y] }.join(" L ") + " Z"
-end
-
-path_parts = []
-polys.each do |poly|
-  poly.each do |ring|
-    path_parts << ring_to_path(ring, project)
-  end
-end
-japan_path = path_parts.join(" ")
-
-xs = []; ys = []
-all_lons.each_with_index do |lon, i|
-  x, y = project.call(lon, all_lats[i])
-  xs << x; ys << y
-end
-min_x, max_x = xs.min - 10, xs.max + 10
-min_y, max_y = ys.min - 10, ys.max + 10
-view_box = "%.1f %.1f %.1f %.1f" % [min_x, min_y, (max_x-min_x), (max_y-min_y)]
-
-resorts.each do |r|
-  x, y = project.call(r["lon"], r["lat"])
-  r["x"] = x.round(1)
-  r["y"] = y.round(1)
-end
-
 season_start = Date.new(2025, 12, 1)
 season_end = Date.new(2026, 4, 30)
 peak_date = Date.new(2026, 2, 14)
@@ -118,14 +59,12 @@ end
 out = {
   "generated_at" => fetched_at,
   "generated_note" => "Live snow depth/temperature fetched from Open-Meteo (api.open-meteo.com) at build time. Typical-season curves are illustrative seasonal patterns based on each resort's known typical peak base depth, not measured historical data.",
-  "japan_path" => japan_path,
-  "view_box" => view_box,
   "resorts" => resorts,
 }
 json_str = JSON.generate(out)
 
 File.write(File.join(DATA_DIR, "ski_data.json"), json_str)
-STDERR.puts "Wrote data/ski_data.json, view_box=#{view_box}, bytes=#{json_str.length}"
+STDERR.puts "Wrote data/ski_data.json, bytes=#{json_str.length}"
 
 # splice the fresh data into index.html from the template
 template = File.read(File.join(ROOT, "template.html"))

@@ -1,6 +1,8 @@
 <title>Japan Snowpack</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root{
     --bg:#eef2f6;
@@ -12,8 +14,6 @@
     --border:#d4dee6;
     --accent:#15628f;
     --accent-ink:#ffffff;
-    --land:#c7d5df;
-    --land-border:#9cb2c1;
     --hokkaido:#1f7fae;
     --tohoku:#7c5cc4;
     --nagano:#c97a2e;
@@ -34,8 +34,6 @@
       --border:#25384a;
       --accent:#68b8e6;
       --accent-ink:#08202f;
-      --land:#1c3143;
-      --land-border:#31495d;
       --hokkaido:#6fc0ea;
       --tohoku:#b39ae8;
       --nagano:#f0a75c;
@@ -56,8 +54,6 @@
     --border:#25384a;
     --accent:#68b8e6;
     --accent-ink:#08202f;
-    --land:#1c3143;
-    --land-border:#31495d;
     --hokkaido:#6fc0ea;
     --tohoku:#b39ae8;
     --nagano:#f0a75c;
@@ -159,10 +155,17 @@
   }
 
   /* ---- Map ---- */
-  .map-svg{width:100%;height:auto;display:block;border-radius:10px;overflow:visible;}
-  .map-svg .land{fill:var(--land);stroke:var(--land-border);stroke-width:1.2;}
+  #map{width:100%;height:460px;border-radius:10px;overflow:hidden;background:var(--surface-sunken);}
+  #map.map-dark .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.85);}
   .marker{cursor:pointer;transition:r .15s ease;}
   .marker:hover, .marker.is-selected{stroke:var(--ink) !important;stroke-width:2.4 !important;}
+  .leaflet-control-zoom a{background:var(--surface);color:var(--ink);border-color:var(--border) !important;}
+  .leaflet-control-zoom a:hover{background:var(--surface-sunken);}
+  .leaflet-control-attribution{
+    background:color-mix(in srgb, var(--surface) 82%, transparent);
+    color:var(--ink-3);font-size:.68rem;
+  }
+  .leaflet-control-attribution a{color:var(--ink-2);}
 
   .map-legend{display:flex;flex-wrap:wrap;gap:22px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
   .legend-block{min-width:170px;}
@@ -316,7 +319,7 @@
           <span class="date-current" id="date-current"></span>
         </div>
       </div>
-      <svg id="map-svg" class="map-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="map"></div>
       <div class="map-legend">
         <div class="legend-block">
           <p class="legend-title">Color &mdash; temperature</p>
@@ -458,31 +461,56 @@
   }
 
   // ---- map ----
-  var svg = document.getElementById('map-svg');
-  svg.setAttribute('viewBox', DATA.view_box);
-  var svgNS = "http://www.w3.org/2000/svg";
+  var svgNS = "http://www.w3.org/2000/svg"; // still used by the chart and size-legend SVGs below
 
-  var landPath = document.createElementNS(svgNS,'path');
-  landPath.setAttribute('class','land');
-  landPath.setAttribute('d', DATA.japan_path);
-  svg.appendChild(landPath);
+  // scrollWheelZoom is off deliberately: a map embedded in a scrolling page
+  // that captures the mouse wheel fights the page scroll the moment the
+  // cursor happens to be over it. The zoom buttons, double-click, and touch
+  // pinch-zoom (Leaflet defaults) all still work.
+  var map = L.map('map', { scrollWheelZoom: false });
+  var bounds = L.latLngBounds(DATA.resorts.map(function(r){ return [r.lat, r.lon]; }));
+  map.fitBounds(bounds, { padding: [28, 28] });
+
+  // A single tile source (plain OpenStreetMap, no API key ever required) kept
+  // for both themes; dark mode is a CSS filter on the tile layer rather than a
+  // second tile provider, since free "dark" tile services have a habit of
+  // adding API-key requirements later without much notice.
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 18
+  }).addTo(map);
+
+  function isDarkMode(){
+    var explicit = document.documentElement.getAttribute('data-theme');
+    if(explicit === 'dark') return true;
+    if(explicit === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  function applyMapTheme(){
+    document.getElementById('map').classList.toggle('map-dark', isDarkMode());
+  }
+  applyMapTheme();
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyMapTheme);
 
   var markerEls = {};
   DATA.resorts.forEach(function(r){
-    var c = document.createElementNS(svgNS,'circle');
-    c.setAttribute('class','marker');
-    c.setAttribute('cx', r.x);
-    c.setAttribute('cy', r.y);
-    c.setAttribute('data-id', r.id);
-    c.setAttribute('tabindex','0');
-    c.setAttribute('role','button');
-    c.addEventListener('click', function(){ select(r.id); });
-    c.addEventListener('keydown', function(e){ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); select(r.id); } });
-    c.addEventListener('mouseenter', function(e){ showMapTip(e, r); });
-    c.addEventListener('mousemove', function(e){ showMapTip(e, r); });
-    c.addEventListener('mouseleave', hideMapTip);
-    svg.appendChild(c);
-    markerEls[r.id] = c;
+    var m = L.circleMarker([r.lat, r.lon], { className: 'marker' });
+    m.on('click', function(){ select(r.id); });
+    m.on('mouseover', function(e){ showMapTip(e.originalEvent, r); });
+    m.on('mousemove', function(e){ showMapTip(e.originalEvent, r); });
+    m.on('mouseout', hideMapTip);
+    m.addTo(map);
+    // Leaflet's SVG renderer gives each circle marker a real DOM element, so it
+    // can be made keyboard-operable the same way the old plain-SVG markers were.
+    var el = m.getElement();
+    if(el){
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('role', 'button');
+      el.addEventListener('keydown', function(e){
+        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); select(r.id); }
+      });
+    }
+    markerEls[r.id] = m;
   });
 
   var mapTip = document.getElementById('map-tooltip');
@@ -500,20 +528,18 @@
   function renderMarkers(){
     DATA.resorts.forEach(function(r){
       var disp = getDisplay(r);
-      var el = markerEls[r.id];
+      var m = markerEls[r.id];
       var radius = depthToRadius(disp.depth);
       var color = tempToColor(disp.temp);
-      el.setAttribute('r', radius.toFixed(2));
       if(disp.depth <= 0.05){
-        el.setAttribute('fill', 'none');
-        el.setAttribute('stroke', color);
-        el.setAttribute('stroke-width', 2.2);
+        m.setStyle({ radius: radius, color: color, weight: 2.2, fillOpacity: 0 });
       } else {
-        el.setAttribute('fill', color);
-        el.setAttribute('stroke', cssVar('--surface'));
-        el.setAttribute('stroke-width', 1.6);
+        m.setStyle({ radius: radius, color: cssVar('--surface'), weight: 1.6, fillColor: color, fillOpacity: 1 });
       }
-      el.setAttribute('aria-label', r.name + ", " + r.region + ", " + Math.round(disp.depth) + " centimeters, " + disp.temp.toFixed(0) + " degrees");
+      var el = m.getElement();
+      if(el){
+        el.setAttribute('aria-label', r.name + ", " + r.region + ", " + Math.round(disp.depth) + " centimeters, " + disp.temp.toFixed(0) + " degrees");
+      }
     });
   }
 
@@ -788,7 +814,10 @@
     state.selectedId = id;
     var r = DATA.resorts.filter(function(x){ return x.id === id; })[0];
     if(!r) return;
-    Object.keys(markerEls).forEach(function(k){ markerEls[k].classList.toggle('is-selected', k===id); });
+    Object.keys(markerEls).forEach(function(k){
+      var el = markerEls[k].getElement();
+      if(el) el.classList.toggle('is-selected', k===id);
+    });
     Object.keys(rowEls).forEach(function(k){ rowEls[k].classList.toggle('is-selected', k===id); });
     renderDetail(r);
   }
