@@ -23,18 +23,34 @@ an illustrative typical-season pattern (Dec–Apr) for each resort.
 - `assets/app.js` — all client-side rendering and interaction (map, list,
   chart, mode/date controls, the live-fetch call)
 - `assets/styles.css` — all styling, including the light/dark theme tokens
-- `data/resorts.json` — resort metadata (name, region, coordinates, elevation,
-  typical peak depth, typical winter temperature range) — edit this to add or
-  adjust resorts
+- `data/resorts.json` — resort *facts*: name, region, coordinates, elevation
+  — edit this to add or adjust resorts
+- `data/illustrative_curve_tuning.json` — the *other* per-resort concern,
+  kept separate from the facts above: `peak_cm`/`min_c`/`edge_c`, keyed by
+  resort id, feeding the synthetic typical-season curve. Once a resort has
+  real historical data, its entry here just goes away — no need to touch
+  `resorts.json`
+- `data/fixture_conditions.json` — a captured live snapshot, used by the
+  offline `fixture` provider (see below) instead of a real Open-Meteo request
 - `data/ski_data.json` — generated output (live snow/temp fetch + seasonal
   curves); this is what `index.html` embeds
+- `config/season.json` — the season's start/end/peak dates and bell-curve
+  width; change this instead of editing code to shift the illustrative
+  season (e.g. for a different hemisphere or mountain range)
 - `lib/season_curve.rb` — pure bell-curve/temperature-curve generation for the
-  illustrative typical-season pattern
-- `lib/providers/open_meteo.rb` — the Open-Meteo network fetch, isolated so
-  it's the one thing in the pipeline that can fail over the network
-- `scripts/build_data.rb` — thin orchestrator: calls the two `lib/` modules
-  above, writes `data/ski_data.json`, and rebuilds `index.html` from
-  `template.html`
+  illustrative typical-season pattern (`config/season.json`'s values are
+  passed in as parameters; the module itself does no I/O)
+- `lib/providers.rb` — picks a data-source provider by name (or the
+  `SNOWPACK_PROVIDER` env var), so `scripts/build_data.rb` calls `.fetch(resorts)`
+  without knowing which one answered
+- `lib/providers/open_meteo.rb` — the real, live provider
+- `lib/providers/fixture.rb` — an offline provider reading
+  `data/fixture_conditions.json`; useful with no network access, or for a
+  fast, deterministic local build
+- `scripts/build_data.rb` — thin orchestrator: resolves a provider, reads the
+  season config, merges the curve-tuning file into the resort facts, calls
+  the `lib/` modules above, writes `data/ski_data.json`, and rebuilds
+  `index.html` from `template.html`
 - `test/*.rb`, `test/providers/*.rb` — Ruby unit tests for the `lib/` modules
   (`rake test` to run them)
 - `test/js/app.test.js` — Node unit tests for `assets/app.js`'s pure
@@ -56,6 +72,16 @@ cache doesn't hide a real change — **always run this after editing either
 file**, or the deployed page will keep serving the old one for up to 10
 minutes even after you push.
 
+To build without hitting Open-Meteo at all (no network access, or a fast
+deterministic build), use the offline fixture provider instead:
+
+```bash
+SNOWPACK_PROVIDER=fixture ruby scripts/build_data.rb
+```
+
+This reads `data/fixture_conditions.json` — a real captured snapshot, just
+frozen in time — instead of making a live request.
+
 ## Running the tests
 
 Ruby's `minitest` and `rake` both ship with the system Ruby on macOS — nothing
@@ -66,9 +92,10 @@ rake test
 ```
 
 Covers `lib/season_curve.rb` (pure curve math), `lib/providers/open_meteo.rb`
-(with the network call stubbed, so it runs with no internet access), and
-`assets/styles.css`'s three light/dark `:root` blocks (guards against
-shipping a token in one theme but not the other).
+(with the network call stubbed, so it runs with no internet access),
+`lib/providers/fixture.rb` and `lib/providers.rb`'s provider-selection
+logic, and `assets/styles.css`'s three light/dark `:root` blocks (guards
+against shipping a token in one theme but not the other).
 
 Node's built-in test runner (Node 18+) covers `assets/app.js`'s pure
 functions — `hexToRgb`, `lerpColor`, `tempToColor`, `depthToRadius`,
@@ -97,7 +124,10 @@ Then open <http://localhost:8000/index.html>.
 
 - **Daily snapshots**: a scheduled GitHub Actions workflow that runs
   `scripts/build_data.rb` daily and commits the result would turn the
-  "typical season" chart into real recorded history over a winter.
+  "typical season" chart into real recorded history over a winter. The
+  provider interface (`lib/providers.rb`) gives this a natural home: a
+  future `Providers::HistoricalArchive` reading the accumulated snapshots,
+  swapped in the same way `fixture` is today.
 
 ## Data sources
 

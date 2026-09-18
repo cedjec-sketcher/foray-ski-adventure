@@ -28,17 +28,29 @@ module SeasonCurve
   end
 
   # Returns [depth_curve, temp_curve], each an array of [iso_date, value]
-  # pairs sampled every STEP_DAYS from SEASON_START to SEASON_END.
-  def self.generate(peak_cm:, min_c:, edge_c:)
+  # pairs sampled every step_days from season_start to season_end. The
+  # keyword args default to this module's own constants (a Northern
+  # Hemisphere Dec-Apr season) but config/season.json overrides them for the
+  # real build — see scripts/build_data.rb. Kept as parameters rather than
+  # read from the config file in here, so this module stays pure/no-I/O and
+  # its default behavior (what the existing tests exercise) never depends on
+  # a file being present.
+  def self.generate(peak_cm:, min_c:, edge_c:,
+                     season_start: SEASON_START, season_end: SEASON_END,
+                     peak_date: PEAK_DATE, bell_width: BELL_WIDTH, step_days: STEP_DAYS)
+    total_days = (season_end - season_start).to_i
+    peak_offset = (peak_date - season_start).to_i
+
     depth_curve = []
     temp_curve = []
     d = 0
-    while d <= TOTAL_DAYS
-      day = SEASON_START + d
-      depth = bell(d) * peak_cm
+    while d <= total_days
+      day = season_start + d
+      depth = bell(d, peak_offset, width: bell_width) * peak_cm
       depth_curve << [day.iso8601, [depth, 0].max.round(1)]
-      temp_curve << [day.iso8601, temperature_at(d, min_c: min_c, edge_c: edge_c).round(1)]
-      d += STEP_DAYS
+      temp = temperature_at(d, min_c: min_c, edge_c: edge_c, peak_offset: peak_offset)
+      temp_curve << [day.iso8601, temp.round(1)]
+      d += step_days
     end
     [depth_curve, temp_curve]
   end

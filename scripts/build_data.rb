@@ -1,22 +1,47 @@
 require 'json'
+require 'date'
 require 'digest'
 require_relative '../lib/season_curve'
-require_relative '../lib/providers/open_meteo'
+require_relative '../lib/providers'
 
 ROOT = File.expand_path("..", __dir__)
 DATA_DIR = File.join(ROOT, "data")
+CONFIG_DIR = File.join(ROOT, "config")
 
 resorts = JSON.parse(File.read(File.join(DATA_DIR, "resorts.json")))
 
-live = Providers::OpenMeteo.new.fetch(resorts)
+# Curve-tuning knobs (typical_peak_cm/min_c/edge_c) live separately from
+# resort facts (name, region, coordinates) — once a resort has real
+# historical data, it stops needing an entry here without resorts.json
+# itself changing shape. Merge them in by id for the rest of this script.
+tuning = JSON.parse(File.read(File.join(DATA_DIR, "illustrative_curve_tuning.json")))
+resorts.each do |r|
+  knobs = tuning.fetch(r["id"]) { raise "No illustrative-curve tuning for resort #{r['id'].inspect}" }
+  r["typical_peak_cm"] = knobs.fetch("peak_cm")
+  r["typical_min_c"] = knobs.fetch("min_c")
+  r["typical_edge_c"] = knobs.fetch("edge_c")
+end
+
+# SNOWPACK_PROVIDER=fixture ruby scripts/build_data.rb runs entirely offline,
+# using a captured snapshot instead of a live Open-Meteo request.
+live = Providers.resolve.fetch(resorts)
 resorts.each_with_index { |r, i| r.merge!(live.fetch("conditions")[i]) }
 
 STDERR.puts "Sample: #{resorts[0]}"
 STDERR.puts "Fetched at: #{live['fetched_at']}"
 
+season_config = JSON.parse(File.read(File.join(CONFIG_DIR, "season.json")))
+season_start = Date.parse(season_config.fetch("season_start"))
+season_end = Date.parse(season_config.fetch("season_end"))
+peak_date = Date.parse(season_config.fetch("peak_date"))
+bell_width = season_config.fetch("bell_width")
+step_days = season_config.fetch("step_days")
+
 resorts.each do |r|
   depth_curve, temp_curve = SeasonCurve.generate(
-    peak_cm: r["typical_peak_cm"], min_c: r["typical_min_c"], edge_c: r["typical_edge_c"]
+    peak_cm: r["typical_peak_cm"], min_c: r["typical_min_c"], edge_c: r["typical_edge_c"],
+    season_start: season_start, season_end: season_end, peak_date: peak_date,
+    bell_width: bell_width, step_days: step_days
   )
   r["typical_season_cm"] = depth_curve
   r["typical_season_temp_c"] = temp_curve

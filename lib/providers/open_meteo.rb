@@ -6,10 +6,9 @@ module Providers
   # Fetches current snow depth and temperature for a batch of resorts from
   # Open-Meteo. Isolated here — rather than interleaved into build_data.rb —
   # so the one part of the pipeline that can fail over the network (and the
-  # one part a test would want to stub) sits by itself. Not yet a swappable
-  # "pick a provider" interface (that's proposed separately, see
-  # docs/PROPOSALS.md §2); this just gives that future interface a shape to
-  # implement.
+  # one part a test would want to stub) sits by itself. Selected via
+  # Providers.resolve (lib/providers.rb), which is what makes this
+  # swappable rather than hardcoded.
   class OpenMeteo
     ENDPOINT = "https://api.open-meteo.com/v1/forecast"
 

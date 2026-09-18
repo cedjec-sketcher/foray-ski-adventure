@@ -80,37 +80,39 @@ obvious, isolated place to add one.
 
 ## 2. Flexibility — data sources & map
 
-**Data sources.** `scripts/build_data.rb` calls Open-Meteo directly, with the
-URL construction and response parsing inline in the main script. Swapping in
-a second source (JMA, a paid provider, or a future "historical archive"
-reader) currently means editing that logic in place.
-
-Proposed: a small provider interface —
+**Data sources — done.** `scripts/build_data.rb` no longer calls Open-Meteo
+directly; it goes through `Providers.resolve(...).fetch(resorts)`, where
+`lib/providers.rb` is a small registry keyed by name (or the
+`SNOWPACK_PROVIDER` env var, default `open_meteo`):
 
 ```ruby
-# lib/providers/open_meteo.rb
 module Providers
-  class OpenMeteo
-    def fetch(resorts)
-      # returns [{ id:, snow_depth_cm:, temperature_c: }, ...]
-    end
+  REGISTRY = { "open_meteo" => OpenMeteo, "fixture" => Fixture }.freeze
+  def self.resolve(name = nil)
+    name ||= ENV["SNOWPACK_PROVIDER"] || DEFAULT_NAME
+    REGISTRY.fetch(name) { raise "Unknown data provider #{name.inspect}..." }.new
   end
 end
 ```
 
-`build_data.rb` would take a provider instance (selected by a config value or
-`--provider` flag) and call `.fetch(resorts)` without knowing which service
-answered. This makes three things easy that are currently hard: adding a
-second live source, swapping providers per-environment (e.g., a stub provider
-in tests — see §3), and later layering in a real historical-archive provider
-once the daily-snapshot GitHub Action (mentioned in the README) exists.
+A second provider, `lib/providers/fixture.rb`, reads a captured snapshot
+(`data/fixture_conditions.json`) instead of hitting the network — real value
+on its own (offline builds, no flaky-connection risk, fast deterministic
+runs in CI or locally), not just a proof that the interface works:
+`SNOWPACK_PROVIDER=fixture ruby scripts/build_data.rb`. This is one
+concrete step short of the original proposal's `--provider` flag idea (an
+env var was simpler and just as swappable per-environment); a real
+historical-archive provider or a `--provider` CLI flag both slot into the
+same registry later without touching `build_data.rb`'s call site.
 
-Also worth splitting `data/resorts.json`'s fields into two concerns that are
-currently mixed together: resort *facts* (name, region, coordinates,
-elevation) versus *illustrative-curve tuning knobs* (`typical_peak_cm`,
-`typical_min_c`, `typical_edge_c`). Once real historical data exists, the
-tuning knobs stop being needed for resorts that have it — separating them now
-means that transition doesn't require reshaping the resort list itself.
+`data/resorts.json`'s fields are now also split into the two concerns that
+used to be mixed together: resort *facts* (name, region, coordinates,
+elevation) live in `data/resorts.json`, and *illustrative-curve tuning
+knobs* (`typical_peak_cm`, `typical_min_c`, `typical_edge_c`) live in
+`data/illustrative_curve_tuning.json`, keyed by resort id and merged in by
+`build_data.rb`. Once real historical data exists for a resort, its tuning
+entry just goes away — `resorts.json` itself never needs to change shape
+for that transition.
 
 **Map — done.** `index.html` (the GitHub Pages version) now renders
 [Leaflet](https://leafletjs.com/) + OpenStreetMap tiles instead of a baked
@@ -132,11 +134,22 @@ scroll-wheel zoom is deliberately disabled (the zoom buttons, double-click,
 and touch pinch-zoom cover it) since a map that captures the mouse wheel
 fights the page's own scrolling.
 
-Smaller flexibility win, still open: season constants (`season_start`,
-`season_end`, `peak_date`, the bell curve's `width`) are hardcoded in
-`build_data.rb`. Pulling them into a small `config.json` would make
-"adapt this for a different mountain range or
-hemisphere" a config change instead of a code change.
+Smaller flexibility win — done. Season constants (`season_start`,
+`season_end`, `peak_date`, the bell curve's `bell_width`, plus `step_days`)
+now live in `config/season.json` and get read by `build_data.rb`, which
+passes them as keyword arguments into `SeasonCurve.generate`.
+`lib/season_curve.rb` itself still defaults those same keywords to its own
+module constants, so it stays pure/no-I/O and its existing unit tests keep
+passing unchanged regardless of whether the config file is present. "Adapt
+this for a different mountain range or hemisphere" is now a config change,
+with one caveat worth flagging honestly: this only covers the *build-time*
+season curve. The client-side chart in `assets/app.js` still has its own
+month labels and a "mid-February" reference baked in for display purposes,
+and those were not wired to `config/season.json` — doing so would need the
+config to be exposed to the client (e.g. embedded in `ski_data.json`), which
+is a bigger change than "pull constants into a file" and is left for a
+future pass if this ever actually needs to support a Southern Hemisphere
+resort.
 
 ## 3. Testing & quality assurance
 
@@ -236,9 +249,9 @@ collide with the §1/§2/§3 chapter references used throughout this doc.
 
 **§2 Flexibility — data sources & map**
 1. ~~Leaflet map~~ — done.
-2. Introduce the provider interface — needed before a second data source or
-   the historical-archive workflow makes sense.
-3. Season-constants config file — no dependency, do whenever it's useful.
+2. ~~Provider interface~~ — done: `lib/providers.rb` registry, plus a real
+   second provider (`lib/providers/fixture.rb`) for offline builds.
+3. ~~Season-constants config file~~ — done: `config/season.json`.
 
 **§3 Testing & quality assurance**
 1. ~~Ruby unit tests (§3a)~~ — done: `rake test`, 15 tests, 77 assertions.
@@ -251,8 +264,8 @@ All three items in this chapter are done, except the manual QA checklist
 (§3d) and the headless-browser smoke test mentioned in §3b, neither of which
 were tracked here as numbered items.
 
-§1 is fully done now. Left: §2's provider interface and config file. Neither
-blocks the other — pick whichever is most useful next.
+§1 and §2 are fully done now. Left in §3: the manual QA checklist (§3d) and
+the headless-browser smoke test mentioned in §3b.
 
 Let me know which of these you'd like implemented first — happy to start
 with any one in isolation.

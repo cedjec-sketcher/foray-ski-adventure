@@ -1,0 +1,102 @@
+{
+  "niseko": {
+    "peak_cm": 220,
+    "min_c": -12,
+    "edge_c": 4
+  },
+  "rusutsu": {
+    "peak_cm": 200,
+    "min_c": -10,
+    "edge_c": 5
+  },
+  "furano": {
+    "peak_cm": 160,
+    "min_c": -14,
+    "edge_c": 3
+  },
+  "kiroro": {
+    "peak_cm": 210,
+    "min_c": -11,
+    "edge_c": 4
+  },
+  "sapporo_teine": {
+    "peak_cm": 140,
+    "min_c": -8,
+    "edge_c": 5
+  },
+  "asahidake": {
+    "peak_cm": 180,
+    "min_c": -16,
+    "edge_c": 2
+  },
+  "zao": {
+    "peak_cm": 180,
+    "min_c": -9,
+    "edge_c": 6
+  },
+  "appi": {
+    "peak_cm": 150,
+    "min_c": -10,
+    "edge_c": 5
+  },
+  "geto": {
+    "peak_cm": 240,
+    "min_c": -9,
+    "edge_c": 6
+  },
+  "hakkoda": {
+    "peak_cm": 300,
+    "min_c": -8,
+    "edge_c": 6
+  },
+  "nozawa": {
+    "peak_cm": 150,
+    "min_c": -7,
+    "edge_c": 7
+  },
+  "hakuba_happo": {
+    "peak_cm": 170,
+    "min_c": -8,
+    "edge_c": 6
+  },
+  "hakuba_cortina": {
+    "peak_cm": 200,
+    "min_c": -8,
+    "edge_c": 6
+  },
+  "shiga_kogen": {
+    "peak_cm": 160,
+    "min_c": -9,
+    "edge_c": 5
+  },
+  "myoko": {
+    "peak_cm": 220,
+    "min_c": -7,
+    "edge_c": 7
+  },
+  "naeba": {
+    "peak_cm": 190,
+    "min_c": -7,
+    "edge_c": 7
+  },
+  "gala_yuzawa": {
+    "peak_cm": 150,
+    "min_c": -6,
+    "edge_c": 8
+  },
+  "madarao": {
+    "peak_cm": 180,
+    "min_c": -7,
+    "edge_c": 7
+  },
+  "tazawako": {
+    "peak_cm": 170,
+    "min_c": -9,
+    "edge_c": 6
+  },
+  "kagura": {
+    "peak_cm": 250,
+    "min_c": -8,
+    "edge_c": 6
+  }
+}

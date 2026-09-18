@@ -1,0 +1,105 @@
+{
+  "fetched_at": "2026-09-19T02:15",
+  "conditions": {
+    "niseko": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 12.6,
+      "weather_code": 3
+    },
+    "rusutsu": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 10.5,
+      "weather_code": 3
+    },
+    "furano": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 11.9,
+      "weather_code": 3
+    },
+    "kiroro": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 13.2,
+      "weather_code": 3
+    },
+    "sapporo_teine": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.2,
+      "weather_code": 3
+    },
+    "asahidake": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 2.0,
+      "weather_code": 3
+    },
+    "zao": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 11.7,
+      "weather_code": 3
+    },
+    "appi": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.1,
+      "weather_code": 51
+    },
+    "geto": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 13.9,
+      "weather_code": 3
+    },
+    "hakkoda": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 11.9,
+      "weather_code": 51
+    },
+    "nozawa": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.3,
+      "weather_code": 1
+    },
+    "hakuba_happo": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 12.2,
+      "weather_code": 1
+    },
+    "hakuba_cortina": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.5,
+      "weather_code": 1
+    },
+    "shiga_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 10.8,
+      "weather_code": 1
+    },
+    "myoko": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.9,
+      "weather_code": 1
+    },
+    "naeba": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.9,
+      "weather_code": 1
+    },
+    "gala_yuzawa": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.9,
+      "weather_code": 1
+    },
+    "madarao": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.0,
+      "weather_code": 2
+    },
+    "tazawako": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.2,
+      "weather_code": 3
+    },
+    "kagura": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 13.8,
+      "weather_code": 2
+    }
+  }
+}

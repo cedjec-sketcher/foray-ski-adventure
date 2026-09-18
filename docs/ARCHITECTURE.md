@@ -21,31 +21,49 @@ no live fetch, since it has no other option.
 
 ```mermaid
 flowchart LR
-  R[data/resorts.json<br/>resort metadata + curve tuning] --> B(scripts/build_data.rb)
-  P[lib/providers/open_meteo.rb] --> B
+  R[data/resorts.json<br/>resort facts] --> B(scripts/build_data.rb)
+  TU[data/illustrative_curve_tuning.json<br/>peak_cm/min_c/edge_c by id] --> B
+  CFG[config/season.json<br/>season dates, bell width] --> B
+  PR[lib/providers.rb<br/>picks a provider by name/env] --> B
   C[lib/season_curve.rb] --> B
-  OM[(Open-Meteo API<br/>live snow_depth + temperature)] --> P
+  PR -.-> OMP[lib/providers/open_meteo.rb]
+  PR -.-> FXP[lib/providers/fixture.rb]
+  OM[(Open-Meteo API<br/>live snow_depth + temperature)] --> OMP
+  FX[data/fixture_conditions.json<br/>captured snapshot] --> FXP
   B --> S[data/ski_data.json<br/>generated dataset]
   S --> T[template.html<br/>has a __SKI_DATA_JSON__ placeholder]
   T --> I[index.html<br/>final page, data inlined]
 ```
 
-`scripts/build_data.rb` is a thin orchestrator — the actual work is in two
-`lib/` modules it calls in order:
+`scripts/build_data.rb` is a thin orchestrator:
 
-1. **Fetch live conditions.** `Providers::OpenMeteo#fetch` makes one batched
-   HTTPS request to Open-Meteo for all resorts' current `snow_depth` and
-   `temperature_2m`. It's the one part of the pipeline that touches the
-   network, isolated so a future test can stub it instead of hitting the
-   real API.
-2. **Generate the illustrative season curve.** `SeasonCurve.generate` is pure
+1. **Merge resort facts with curve-tuning knobs.** `data/resorts.json` holds
+   *facts* (name, region, coordinates, elevation); `typical_peak_cm`/
+   `typical_min_c`/`typical_edge_c` live separately in
+   `data/illustrative_curve_tuning.json`, keyed by resort id, and get merged
+   in by id. Once a resort has real historical data, its tuning entry just
+   goes away — `resorts.json` itself never needs to change shape for that.
+2. **Fetch live conditions**, from whichever provider `lib/providers.rb`
+   resolves (`SNOWPACK_PROVIDER` env var, default `open_meteo`).
+   `Providers::OpenMeteo#fetch` makes one batched HTTPS request to
+   Open-Meteo for all resorts' current `snow_depth` and `temperature_2m` —
+   it's the one part of the pipeline that touches the network, isolated so
+   a test can stub it instead of hitting the real API.
+   `Providers::Fixture#fetch` instead reads a captured snapshot
+   (`data/fixture_conditions.json`) with no network access at all — real
+   value on its own (offline development, a flaky connection, fast
+   deterministic builds), not just a proof that the interface works.
+3. **Generate the illustrative season curve.** `SeasonCurve.generate` is pure
    computation, no I/O: for each resort, a bell curve (peaking at its own
-   `typical_peak_cm` on a shared mid-February date) and a parabolic
-   temperature curve (mild at the season edges, coldest at that same date),
-   sampled every 3 days from Dec 1 to Apr 30. This is synthetic — clearly
-   labeled as such in the UI — because no real historical time series
-   exists yet.
-3. **Write outputs.** `data/ski_data.json` (the raw generated dataset, useful
+   `typical_peak_cm` on a shared date) and a parabolic temperature curve
+   (mild at the season edges, coldest at that same date). The season's
+   dates and the bell curve's width come from `config/season.json` — passed
+   in as parameters, not read from the file inside `season_curve.rb` itself,
+   so the module stays pure and its default behavior (what the existing
+   tests exercise) never depends on a config file being present. This is
+   synthetic — clearly labeled as such in the UI — because no real
+   historical time series exists yet.
+4. **Write outputs.** `data/ski_data.json` (the raw generated dataset, useful
    on its own) and `index.html` (the template with that JSON spliced in, and
    `assets/app.js`/`assets/styles.css`'s `<script src>`/`<link href>`
    stamped with `?v=<8-char MD5 of that file's own content>`). An asset

@@ -1,0 +1,7 @@
+{
+  "season_start": "2025-12-01",
+  "season_end": "2026-04-30",
+  "peak_date": "2026-02-14",
+  "bell_width": 45,
+  "step_days": 3
+}
