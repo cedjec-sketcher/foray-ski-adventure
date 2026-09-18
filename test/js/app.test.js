@@ -88,3 +88,33 @@ test('fmtFetched includes the date and time from an Open-Meteo timestamp', () =>
   assert.match(label, /Feb 14/);
   assert.match(label, /9:45/);
 });
+
+// Regression tests for GitHub issue #1: the map hover tooltip could render
+// past the bottom (or side) of the viewport, since it always placed itself
+// below-and-right of the cursor with no check for whether that fit.
+test('computeTooltipPosition places the tooltip below and right of the cursor when there is room', () => {
+  const pos = app.computeTooltipPosition(300, 400, 220, 99, 1200, 900, 14);
+  assert.deepEqual(pos, { x: 314, y: 414 });
+});
+
+test('computeTooltipPosition flips above the cursor when the default position would overflow the bottom', () => {
+  // viewport is only 450 tall; cursor at y=400 + 99 tall tooltip + 14 margin
+  // would end at 513, past the bottom, so it should flip above instead
+  const pos = app.computeTooltipPosition(300, 400, 220, 99, 1200, 450, 14);
+  assert.equal(pos.y, 400 - 99 - 14);
+  assert.ok(pos.y + 99 <= 450, 'flipped tooltip should fit within the viewport height');
+});
+
+test('computeTooltipPosition flips left of the cursor when the default position would overflow the right edge', () => {
+  const pos = app.computeTooltipPosition(1100, 400, 220, 99, 1200, 900, 14);
+  assert.equal(pos.x, 1100 - 220 - 14);
+  assert.ok(pos.x + 220 <= 1200, 'flipped tooltip should fit within the viewport width');
+});
+
+test('computeTooltipPosition clamps to a small margin when the viewport is too small to fit the tooltip on either side', () => {
+  // a 110x50 viewport is smaller than the 220x99 tooltip in both dimensions,
+  // so both the default position and the flipped position overflow — it
+  // should clamp to a small positive margin rather than go negative
+  const pos = app.computeTooltipPosition(5, 5, 220, 99, 110, 50, 14);
+  assert.deepEqual(pos, { x: 4, y: 4 });
+});

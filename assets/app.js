@@ -57,6 +57,21 @@
     return d.toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZoneName:"short"});
   }
 
+  // Default: below and to the right of the cursor. Flips to the other side
+  // of the cursor on whichever axis would otherwise push the tooltip past
+  // the viewport edge (a marker near the bottom of the map used to send the
+  // tooltip straight past the map card into whatever came after it — GitHub
+  // issue #1).
+  function computeTooltipPosition(cursorX, cursorY, tipWidth, tipHeight, viewportWidth, viewportHeight, margin){
+    var x = cursorX + margin;
+    var y = cursorY + margin;
+    if(y + tipHeight > viewportHeight) y = cursorY - tipHeight - margin;
+    if(x + tipWidth > viewportWidth) x = cursorX - tipWidth - margin;
+    x = Math.max(4, x);
+    y = Math.max(4, y);
+    return { x: x, y: y };
+  }
+
   if (typeof document !== 'undefined') {
   // ---- everything below touches the DOM, Leaflet, or fetch ----
   var DATA = JSON.parse(document.getElementById('ski-data').textContent);
@@ -183,8 +198,12 @@
     mapTip.innerHTML = "<b>" + r.name + "</b>" + r.region + " &middot; " + r.elevation_top_m + "m top" +
       "<br>" + disp.label + ": " + Math.round(disp.depth) + "cm, " + disp.temp.toFixed(1) + "&deg;C" +
       "<br>Typical peak: " + r.typical_peak_cm + "cm";
-    mapTip.style.left = (e.clientX + 14) + "px";
-    mapTip.style.top = (e.clientY + 14) + "px";
+
+    var tipRect = mapTip.getBoundingClientRect(); // opacity:0 still lays out, so this reflects real content size
+    var pos = computeTooltipPosition(e.clientX, e.clientY, tipRect.width, tipRect.height, window.innerWidth, window.innerHeight, 14);
+
+    mapTip.style.left = pos.x + "px";
+    mapTip.style.top = pos.y + "px";
     mapTip.classList.add('visible');
   }
   function hideMapTip(){ mapTip.classList.remove('visible'); }
@@ -554,6 +573,7 @@
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { hexToRgb: hexToRgb, lerpColor: lerpColor, tempToColor: tempToColor,
-      depthToRadius: depthToRadius, fmtDate: fmtDate, fmtFetched: fmtFetched };
+      depthToRadius: depthToRadius, fmtDate: fmtDate, fmtFetched: fmtFetched,
+      computeTooltipPosition: computeTooltipPosition };
   }
 })();
