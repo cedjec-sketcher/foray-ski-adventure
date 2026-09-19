@@ -2,15 +2,21 @@
 
 [![Test](https://github.com/cedjec-sketcher/foray-ski-adventure/actions/workflows/test.yml/badge.svg)](https://github.com/cedjec-sketcher/foray-ski-adventure/actions/workflows/test.yml)
 
-A single-page map of 20 Japanese ski resorts (Hokkaido to Nagano) on a real,
-pannable/zoomable [Leaflet](https://leafletjs.com/) + OpenStreetMap map,
-showing live snow depth and temperature from
-[Open-Meteo](https://open-meteo.com) (fetched directly in the browser), with
-an illustrative typical-season pattern (Dec–Apr) for each resort.
+A single-page map of ~480 Japanese ski resorts (Hokkaido to Kyushu) on a
+real, pannable/zoomable [Leaflet](https://leafletjs.com/) + OpenStreetMap
+map, showing live snow depth and temperature from
+[Open-Meteo](https://open-meteo.com) (fetched directly in the browser). The
+~27 larger resorts also have an illustrative typical-season pattern
+(Dec–Apr); the smaller ones are live-only.
 
 - Marker **size** = snow depth (area-scaled, not radius)
 - Marker **color** = temperature (diverging, centered on 0°C)
 - A resort with 0cm renders as a small hollow ring rather than a filled dot
+- **Zoom reveals smaller resorts**: major ones are always shown, medium ones
+  from zoom 6, small ones from zoom 8
+- **The list is the filter**: search, region chips and size chips narrow the
+  list *and* the map (filtered-out resorts become faint dots), and by
+  default the list only shows what's in the map view
 - Dark mode uses a CSS filter on the same OpenStreetMap tiles rather than a
   second tile provider — see ARCHITECTURE.md for why
 
@@ -23,8 +29,10 @@ an illustrative typical-season pattern (Dec–Apr) for each resort.
 - `assets/app.js` — all client-side rendering and interaction (map, list,
   chart, mode/date controls, the live-fetch call)
 - `assets/styles.css` — all styling, including the light/dark theme tokens
-- `data/resorts.json` — resort *facts*: name, region, coordinates, elevation
-  — edit this to add or adjust resorts
+- `data/resorts.json` — resort *facts*: name, region, prefecture,
+  coordinates, top elevation, size tier, downhill run length. Mostly
+  imported from OpenSkiMap (see below); edit it freely, re-importing never
+  overwrites an existing entry
 - `data/illustrative_curve_tuning.json` — the *other* per-resort concern,
   kept separate from the facts above: `peak_cm`/`min_c`/`edge_c`, keyed by
   resort id, feeding the synthetic typical-season curve. Once a resort has
@@ -37,6 +45,11 @@ an illustrative typical-season pattern (Dec–Apr) for each resort.
 - `config/season.json` — the season's start/end/peak dates and bell-curve
   width; change this instead of editing code to shift the illustrative
   season (e.g. for a different hemisphere or mountain range)
+- `lib/openskimap_import.rb` — pure logic for turning OpenSkiMap's ski-area
+  GeoJSON into resort entries (regions, size tiers, name cleanup, matching
+  the curated resorts, ids)
+- `scripts/import_openskimap.rb` — downloads OpenSkiMap's data (cached in
+  `tmp/`) and merges it into `data/resorts.json`
 - `lib/season_curve.rb` — pure bell-curve/temperature-curve generation for the
   illustrative typical-season pattern (`config/season.json`'s values are
   passed in as parameters; the module itself does no I/O)
@@ -82,6 +95,26 @@ SNOWPACK_PROVIDER=fixture ruby scripts/build_data.rb
 This reads `data/fixture_conditions.json` — a real captured snapshot, just
 frozen in time — instead of making a live request.
 
+## Adding or refreshing resorts
+
+`data/resorts.json` was grown from 20 hand-picked resorts to ~480 by importing
+operating downhill ski areas from [OpenSkiMap](https://openskimap.org):
+
+```bash
+ruby scripts/import_openskimap.rb
+```
+
+It downloads OpenSkiMap's `ski_areas.geojson` (they ask for at most one
+automated download a day, so it's cached in `tmp/` and reused until you delete
+it), adds any area not already in `resorts.json`, and leaves every existing
+entry untouched. Pass a path to use a file you already have. The 20 hand-picked
+resorts are matched to OpenSkiMap by name (the `MATCHERS` table in the
+script); one of them can absorb several OpenSkiMap areas (Shiga Kogen is 19).
+
+After importing, run `ruby scripts/build_data.rb`. Every resort is live-only
+until it has an entry in `data/illustrative_curve_tuning.json`, which is what
+gives it a typical-season curve.
+
 ## Running the tests
 
 Ruby's `minitest` and `rake` both ship with the system Ruby on macOS — nothing
@@ -94,12 +127,16 @@ rake test
 Covers `lib/season_curve.rb` (pure curve math), `lib/providers/open_meteo.rb`
 (with the network call stubbed, so it runs with no internet access),
 `lib/providers/fixture.rb` and `lib/providers.rb`'s provider-selection
-logic, and `assets/styles.css`'s three light/dark `:root` blocks (guards
-against shipping a token in one theme but not the other).
+logic, `lib/openskimap_import.rb`, `assets/styles.css`'s three light/dark
+`:root` blocks (guards against shipping a token in one theme but not the
+other), a cross-check that the Ruby importer, `app.js`, the CSS and the real
+data agree on the region list, and that `index.html` is up to date with the
+assets and data it embeds.
 
 Node's built-in test runner (Node 18+) covers `assets/app.js`'s pure
-functions — `hexToRgb`, `lerpColor`, `tempToColor`, `depthToRadius`,
-`fmtDate`, `fmtFetched`:
+functions — the colour/size scales, date formatting, tooltip placement, and
+all of the marker/list visibility logic (`classifyResort`, `isListed`,
+search, tier reveal):
 
 ```bash
 node --test test/js
@@ -122,6 +159,9 @@ Then open <http://localhost:8000/index.html>.
 
 ## Next steps
 
+- See the **Backlog** in docs/PROPOSALS.md for the smaller open items
+  (typical-season curves for the bigger resorts, resort-name cleanup, and
+  more).
 - **Daily snapshots**: a scheduled GitHub Actions workflow that runs
   `scripts/build_data.rb` daily and commits the result would turn the
   "typical season" chart into real recorded history over a winter. The
@@ -133,7 +173,14 @@ Then open <http://localhost:8000/index.html>.
 
 - Live snow depth and temperature: [Open-Meteo](https://open-meteo.com) —
   free for non-commercial use with attribution; see their
-  [terms](https://open-meteo.com/en/terms) before any commercial use.
+  [terms](https://open-meteo.com/en/terms) before any commercial use. The
+  free tier is metered per location, which is why the page only refreshes
+  the resorts currently on screen.
+- Resort names, locations, elevations and run lengths:
+  [OpenSkiMap](https://openskimap.org) / [OpenSkiData](https://openskidata.org),
+  derived from OpenStreetMap data © OpenStreetMap contributors, available
+  under the [ODbL](https://opendatacommons.org/licenses/odbl/). See the note
+  on this in docs/PROPOSALS.md ("Backlog").
 - Map tiles: [OpenStreetMap](https://www.openstreetmap.org/copyright) —
   free, with an acceptable-use policy for the public tile server (fine for
   this project's traffic).

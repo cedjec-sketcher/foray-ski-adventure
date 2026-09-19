@@ -71,7 +71,10 @@ STDERR.puts "Wrote data/ski_data.json, bytes=#{json_str.length}"
 
 # splice the fresh data into index.html from the template
 template = File.read(File.join(ROOT, "template.html"), encoding: "UTF-8")
-html = template.sub("__SKI_DATA_JSON__") { json_str }
+# Resort names come from a third-party dataset (OpenSkiMap) and this JSON sits
+# inside a <script> element, where a "</script>" in a name would end it early.
+# < is the same "<" to any JSON parser, so escape every one.
+html = template.sub("__SKI_DATA_JSON__") { json_str.gsub("<") { "\\u003c" } }
 
 # Cache-bust assets/app.js and assets/styles.css with a hash of their own
 # content, so a real change always reaches browsers immediately instead of

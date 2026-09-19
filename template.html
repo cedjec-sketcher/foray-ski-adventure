@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Japan Snowpack</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -9,14 +10,14 @@
   <div class="masthead">
     <div>
       <h1>Japan Snowpack</h1>
-      <p class="tagline">Marker size shows snow depth, color shows temperature, across 20 resorts, Hokkaido to Nagano.</p>
+      <p class="tagline">Marker size shows snow depth, color shows temperature, across <span id="resort-count">hundreds of</span> ski resorts in Japan.</p>
     </div>
     <div class="fetch-meta" id="fetch-meta"></div>
   </div>
 
   <div class="banner">
     <span class="dot"></span>
-    <span><strong>It's currently off-season</strong> &mdash; live snow depth is 0cm nearly everywhere in September, so the map opens on a <strong>typical-season</strong> snapshot (illustrative, not measured history) so there's something to look at. Drag the slider to scrub December&ndash;April, or switch to Live now to see today's real numbers from Open&#8209;Meteo.</span>
+    <span><strong>It's currently off-season</strong> &mdash; live snow depth is 0cm nearly everywhere in September, so the map opens on a <strong>typical-season</strong> snapshot (illustrative, not measured history) so there's something to look at. Drag the slider to scrub December&ndash;April, or switch to Live now to see today's real numbers from Open&#8209;Meteo. Only the larger resorts have a typical-season pattern; the smaller ones appear in Live now.</span>
   </div>
 
   <div class="grid">
@@ -49,8 +50,18 @@
     </div>
 
     <div class="card resort-list-card">
-      <h2>All resorts</h2>
-      <p class="card-sub">Grouped north to south &middot; depth for the selected mode, typical peak for reference</p>
+      <h2>Resorts</h2>
+      <p class="card-sub">Grouped by region, largest first &middot; depth for the selected mode, typical peak for reference</p>
+      <div class="filters">
+        <input type="search" id="resort-search" class="search" placeholder="Search resort, prefecture or region" aria-label="Search resorts" autocomplete="off">
+        <div class="chip-row" id="region-chips" role="group" aria-label="Filter by region"></div>
+        <div class="chip-row" id="tier-chips" role="group" aria-label="Filter by resort size"></div>
+        <div class="filter-foot">
+          <label class="check"><input type="checkbox" id="map-only" checked> Only resorts in map view</label>
+          <button type="button" class="link-btn" id="clear-filters" hidden>Clear filters</button>
+        </div>
+        <p class="filter-status" id="filter-status" role="status" aria-live="polite"></p>
+      </div>
       <div id="resort-list"></div>
     </div>
   </div>

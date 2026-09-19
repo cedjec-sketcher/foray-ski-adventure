@@ -269,3 +269,70 @@ the headless-browser smoke test mentioned in §3b.
 
 Let me know which of these you'd like implemented first — happy to start
 with any one in isolation.
+
+## Backlog / to consider
+
+Smaller open items, mostly raised while adding the ~450 OpenSkiMap resorts
+(branch `more-resorts`). None blocks anything; they're here so they don't get
+lost.
+
+**Rethink the typical-season curves.** Asked for explicitly. Today they're a
+synthetic bell curve per resort, driven by three hand-set numbers in
+`data/illustrative_curve_tuning.json`. Only ~27 resorts have one (every
+`major` resort; everything smaller is live-only by design). Two things to look
+at:
+- The 7 entries added with the import (Tsugaike, Takasu, Sahoro, Nekoma,
+  Joetsu, Tomamu, Hakuba Iwatake) are **my rough estimates by analogy to
+  neighbouring curated resorts**, not sourced numbers. Worth checking against
+  something real before anyone relies on them.
+- A real replacement would compute a per-resort, day-of-year median from
+  historical data (worth checking whether Open-Meteo's historical/archive
+  API offers snow depth at useful quality for mountain terrain; the daily-
+  snapshot Action in the README is the other route). That would retire the
+  tuning knobs and could give *every* resort a curve, not just the big ones.
+  The same terrain-resolution caveat that applies to the live numbers would
+  apply here.
+
+**Resort names and duplicates.** Deliberately deferred. Names are OpenSkiMap's,
+lightly cleaned (first English part, macrons folded, parentheticals dropped).
+Known rough edges: one resort has only a Japanese name
+(`osm_812dcf8b`, Grand Sunpia Inawashiro); two areas are both called "Manza
+Onsen" (ids `manza_onsen`, `manza_onsen_gunma`); and only Shiga Kogen has
+its OpenSkiMap sub-areas merged into one resort. Other places OpenSkiMap
+splits what visitors think of as one destination: the Naeba / Tashiro /
+Kagura / Mitsumata group, Myoko's several resorts, Niseko Moiwa (listed
+separately from Niseko United). Search also only matches English names, so
+typing a resort's Japanese name finds nothing.
+
+**Licensing of the imported data.** OpenSkiMap's data is derived from
+OpenStreetMap and released under the ODbL, which has a share-alike condition
+for derived databases; the repo's MIT license covers the code, not that data.
+Attribution is in place (the map's attribution line and the README's data
+sources). Whether `data/resorts.json` / `ski_data.json` should be labelled as
+ODbL is worth a deliberate decision — I'm not a lawyer and haven't made it
+for you.
+
+**Tier thresholds and zoom levels are first guesses.** `MAJOR_MIN_KM = 20` and
+`MEDIUM_MIN_KM = 8` in `lib/openskimap_import.rb`, and `TIER_MIN_ZOOM`
+(medium 6, small 8) in `assets/app.js`. Some resorts people would call
+notable land in `medium` and so have no typical-season curve: Ontake 2240
+(top elevation 2,215 m, the highest of any resort outside the major tier), Kamui Ski Links, Aomori
+Spring, Shizukuishi, Palcall Tsumagoi. Promoting one is a tier edit in
+`resorts.json` plus a tuning entry.
+
+**Live-refresh call budget.** Open-Meteo's free tier is metered per location
+(5,000/hour, 10,000/day). The page only refreshes what's on screen, once per
+resort per page view, which keeps a normal visit to a few hundred calls. If
+traffic grows, the daily-snapshot workflow (README, Next steps) would let
+browsers skip most of those calls.
+
+**Smaller things.**
+- ~40 resorts have no known top elevation (OpenSkiMap has no run/lift data
+  for them); the UI shows a dash.
+- Filters and the list card were checked at desktop width only; the small-
+  screen layout (chips wrapping, list capped at 70vh) hasn't been looked at
+  on a real phone.
+- Filter state isn't in the URL, so a filtered view can't be shared.
+- All ~480 markers are SVG paths, which is fine at this size and is what
+  gives us keyboard/ARIA hooks; a Canvas renderer would only matter if the
+  count grew a lot.
