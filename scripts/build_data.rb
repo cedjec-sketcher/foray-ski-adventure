@@ -14,9 +14,16 @@ resorts = JSON.parse(File.read(File.join(DATA_DIR, "resorts.json")))
 # resort facts (name, region, coordinates) — once a resort has real
 # historical data, it stops needing an entry here without resorts.json
 # itself changing shape. Merge them in by id for the rest of this script.
+#
+# A resort with no entry simply has no typical-season curve: the page shows
+# it in Live mode only. Only the larger resorts have entries.
 tuning = JSON.parse(File.read(File.join(DATA_DIR, "illustrative_curve_tuning.json")))
+orphans = tuning.keys - resorts.map { |r| r["id"] }
+raise "Tuning entries for unknown resort id(s): #{orphans.join(', ')}" unless orphans.empty?
+
 resorts.each do |r|
-  knobs = tuning.fetch(r["id"]) { raise "No illustrative-curve tuning for resort #{r['id'].inspect}" }
+  knobs = tuning[r["id"]]
+  next unless knobs
   r["typical_peak_cm"] = knobs.fetch("peak_cm")
   r["typical_min_c"] = knobs.fetch("min_c")
   r["typical_edge_c"] = knobs.fetch("edge_c")
@@ -38,6 +45,7 @@ bell_width = season_config.fetch("bell_width")
 step_days = season_config.fetch("step_days")
 
 resorts.each do |r|
+  next unless r["typical_peak_cm"]
   depth_curve, temp_curve = SeasonCurve.generate(
     peak_cm: r["typical_peak_cm"], min_c: r["typical_min_c"], edge_c: r["typical_edge_c"],
     season_start: season_start, season_end: season_end, peak_date: peak_date,
@@ -46,6 +54,10 @@ resorts.each do |r|
   r["typical_season_cm"] = depth_curve
   r["typical_season_temp_c"] = temp_curve
 end
+
+# Importer bookkeeping (data/resorts.json keeps it so re-imports stay
+# idempotent) isn't something the page needs, and across ~500 resorts it adds up.
+resorts.each { |r| %w[osm_id osm_ids lift_count].each { |k| r.delete(k) } }
 
 out = {
   "generated_at" => live["fetched_at"],
