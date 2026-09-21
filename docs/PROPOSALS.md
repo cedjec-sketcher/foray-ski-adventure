@@ -304,18 +304,19 @@ Kagura / Mitsumata group, Myoko's several resorts, Niseko Moiwa (listed
 separately from Niseko United). Search also only matches English names, so
 typing a resort's Japanese name finds nothing.
 
-**Licensing of the imported data.** OpenSkiMap's data is derived from
-OpenStreetMap and released under the ODbL, which has a share-alike condition
-for derived databases; the repo's MIT license covers the code, not that data.
-Attribution now follows OpenSkiData's recommended wording (page footer and
-README): OpenSkiData / OpenSkiMap.org, © OpenStreetMap contributors (ODbL),
-Skimap.org, Who's On First, © Mapterhorn. (The first version credited only
-OpenStreetMap and OpenSkiMap; I haven't verified which of the other sources
-our particular fields come from, so the full list is the safe choice.)
-Still open, and yours to decide: labelling `data/resorts.json` and the files
-derived from it as ODbL. My reading, not legal advice: because the repo is
-public, publishing those files is public use of a derived database, so
-they'd need to be offered under the ODbL; the MIT code license is unaffected.
+**Licensing of the imported data — done.** OpenSkiMap's data derives from
+OpenStreetMap and is under the ODbL, whose share-alike condition applies to
+the derived data files (the repo is public, so publishing them is public use).
+Decided with the owner (2026-09-21): label them ODbL and leave the code MIT.
+[DATA_LICENSE.md](../DATA_LICENSE.md) lists which files are under which terms;
+`ski_data.json` also carries a `data_license` note inside it; the page footer
+and README credit OpenSkiData's recommended wording (OpenSkiData / OpenSkiMap.org,
+© OpenStreetMap contributors (ODbL), Skimap.org, Who's On First, © Mapterhorn).
+I haven't verified which of the non-OSM sources our particular fields come
+from, so the full list is the safe choice. The project is a hobby with no
+commercial aspirations (also confirmed by the owner), which is what keeps it
+inside Open-Meteo's free non-commercial tier: ads or subscriptions would
+change that. Not legal advice.
 
 **Tier thresholds and zoom levels are first guesses.** `MAJOR_MIN_KM = 20` and
 `MEDIUM_MIN_KM = 8` in `lib/openskimap_import.rb`, and `TIER_MIN_ZOOM`

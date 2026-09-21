@@ -35,6 +35,13 @@ class BuildOutputTest < Minitest::Test
     assert_equal file, embedded, "index.html's embedded data is out of date - run `ruby scripts/build_data.rb`"
   end
 
+  def test_the_generated_data_carries_its_licence_note
+    file = JSON.parse(File.read(File.join(ROOT, "data", "ski_data.json"), encoding: "UTF-8"))
+    assert_match(/ODbL/, file["data_license"].to_s)
+    assert_match(/CC BY 4\.0/, file["data_license"].to_s)
+    assert File.exist?(File.join(ROOT, "DATA_LICENSE.md")), "the note points at DATA_LICENSE.md"
+  end
+
   # Resort names come from a third-party dataset; a "</script>" in one must not
   # be able to end the data element early.
   def test_the_embedded_data_contains_no_raw_less_than_sign

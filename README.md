@@ -181,16 +181,21 @@ Then open <http://localhost:8000/index.html>.
 - Resort names, locations, elevations and run lengths:
   [OpenSkiMap](https://openskimap.org) / [OpenSkiData](https://openskidata.org),
   derived from OpenStreetMap data © OpenStreetMap contributors, available
-  under the [ODbL](https://opendatacommons.org/licenses/odbl/). See the note
-  on this in docs/PROPOSALS.md ("Backlog").
+  under the [ODbL](https://opendatacommons.org/licenses/odbl/). See
+  [DATA_LICENSE.md](./DATA_LICENSE.md).
 - Map tiles: [OpenStreetMap](https://www.openstreetmap.org/copyright) —
   free, with an acceptable-use policy for the public tile server (fine for
   this project's traffic).
 
 ## License
 
-[MIT](./LICENSE) — see the LICENSE file. This covers the code in this repo;
-it doesn't change the terms of the third-party data sources listed above.
+[MIT](./LICENSE) for the code. The **data is not all MIT**: the resort data
+(`data/resorts.json`, `data/ski_data.json` and its copy embedded in
+`index.html`) is under the [ODbL](https://opendatacommons.org/licenses/odbl/1-0/)
+because it derives from OpenSkiMap / OpenStreetMap, and the live weather
+values are [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) from
+Open-Meteo. [DATA_LICENSE.md](./DATA_LICENSE.md) lists which files are under
+which terms, and what reusing them requires.
 
 ## More docs
 

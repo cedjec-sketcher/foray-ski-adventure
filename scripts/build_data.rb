@@ -61,6 +61,9 @@ resorts.each { |r| %w[osm_id osm_ids lift_count].each { |k| r.delete(k) } }
 
 out = {
   "generated_at" => live["fetched_at"],
+  # Travels with the data if someone copies ski_data.json out of the repo;
+  # see DATA_LICENSE.md.
+  "data_license" => "Resort names, locations, elevations and run lengths: ODbL 1.0, from OpenSkiData / OpenSkiMap.org, (c) OpenStreetMap contributors, Skimap.org, Who's On First, (c) Mapterhorn. Snow depth, temperature and weather code: CC BY 4.0, Open-Meteo.com. See DATA_LICENSE.md in the project repository.",
   "generated_note" => "Live snow depth/temperature fetched from Open-Meteo (api.open-meteo.com) at build time. Typical-season curves are illustrative seasonal patterns based on each resort's known typical peak base depth, not measured historical data.",
   "resorts" => resorts,
 }
@@ -73,7 +76,7 @@ STDERR.puts "Wrote data/ski_data.json, bytes=#{json_str.length}"
 template = File.read(File.join(ROOT, "template.html"), encoding: "UTF-8")
 # Resort names come from a third-party dataset (OpenSkiMap) and this JSON sits
 # inside a <script> element, where a "</script>" in a name would end it early.
-# < is the same "<" to any JSON parser, so escape every one.
+# The JSON escape \u003c means "<" to any JSON parser, so write every one that way.
 html = template.sub("__SKI_DATA_JSON__") { json_str.gsub("<") { "\\u003c" } }
 
 # Cache-bust assets/app.js and assets/styles.css with a hash of their own
