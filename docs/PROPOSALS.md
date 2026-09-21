@@ -269,3 +269,85 @@ the headless-browser smoke test mentioned in §3b.
 
 Let me know which of these you'd like implemented first — happy to start
 with any one in isolation.
+
+## Backlog / to consider
+
+Smaller open items, mostly raised while adding the ~450 OpenSkiMap resorts
+(branch `more-resorts`). None blocks anything; they're here so they don't get
+lost.
+
+**Rethink the typical-season curves.** Asked for explicitly. Today they're a
+synthetic bell curve per resort, driven by three hand-set numbers in
+`data/illustrative_curve_tuning.json`. Only ~27 resorts have one (every
+`major` resort; everything smaller is live-only by design). Two things to look
+at:
+- The 7 entries added with the import (Tsugaike, Takasu, Sahoro, Nekoma,
+  Joetsu, Tomamu, Hakuba Iwatake) are **my rough estimates by analogy to
+  neighbouring curated resorts**, not sourced numbers. Worth checking against
+  something real before anyone relies on them.
+- A real replacement would compute a per-resort, day-of-year median from
+  historical data (worth checking whether Open-Meteo's historical/archive
+  API offers snow depth at useful quality for mountain terrain; the daily-
+  snapshot Action in the README is the other route). That would retire the
+  tuning knobs and could give *every* resort a curve, not just the big ones.
+  The same terrain-resolution caveat that applies to the live numbers would
+  apply here.
+
+**Resort names and duplicates.** Deliberately deferred. Names are OpenSkiMap's,
+lightly cleaned (first English part, macrons folded, parentheticals dropped).
+Known rough edges: one resort has only a Japanese name
+(`osm_812dcf8b`, Grand Sunpia Inawashiro); two areas are both called "Manza
+Onsen" (ids `manza_onsen`, `manza_onsen_gunma`); and only Shiga Kogen has
+its OpenSkiMap sub-areas merged into one resort. Other places OpenSkiMap
+splits what visitors think of as one destination: the Naeba / Tashiro /
+Kagura / Mitsumata group, Myoko's several resorts, Niseko Moiwa (listed
+separately from Niseko United). Search also only matches English names, so
+typing a resort's Japanese name finds nothing.
+
+**Licensing of the imported data — done.** OpenSkiMap's data derives from
+OpenStreetMap and is under the ODbL, whose share-alike condition applies to
+the derived data files (the repo is public, so publishing them is public use).
+Decided with the owner (2026-09-21): label them ODbL and leave the code MIT.
+[DATA_LICENSE.md](../DATA_LICENSE.md) lists which files are under which terms;
+`ski_data.json` also carries a `data_license` note inside it; the page footer
+and README credit OpenSkiData's recommended wording (OpenSkiData / OpenSkiMap.org,
+© OpenStreetMap contributors (ODbL), Skimap.org, Who's On First, © Mapterhorn).
+I haven't verified which of the non-OSM sources our particular fields come
+from, so the full list is the safe choice. The project is a hobby with no
+commercial aspirations (also confirmed by the owner), which is what keeps it
+inside Open-Meteo's free non-commercial tier: ads or subscriptions would
+change that. Not legal advice.
+
+**Tier thresholds and zoom levels are first guesses.** `MAJOR_MIN_KM = 20` and
+`MEDIUM_MIN_KM = 8` in `lib/openskimap_import.rb`, and `TIER_MIN_ZOOM`
+(medium 6, small 8) in `assets/app.js`. Some resorts people would call
+notable land in `medium` and so have no typical-season curve: Ontake 2240
+(top elevation 2,215 m, the highest of any resort outside the major tier), Kamui Ski Links, Aomori
+Spring, Shizukuishi, Palcall Tsumagoi. Promoting one is a tier edit in
+`resorts.json` plus a tuning entry.
+
+**Live-refresh call budget.** Open-Meteo's free tier allows 600/minute,
+5,000/hour and 10,000/day *per IP* (so each visitor has their own budget,
+except behind shared IPs). Whether a multi-location request counts as one call
+or one per location isn't documented anywhere I could read, and an earlier
+version of these docs wrongly stated the per-location reading as fact. The
+page is built for the worse case: it refreshes only what's on screen, once
+per resort per page view, ~30-140 locations per action. If it turns out to be
+one call per request, this is over-cautious but harmless. If traffic grows, or
+the site ever carries ads or subscriptions (which makes it "commercial" under
+Open-Meteo's terms and needs a paid plan), the daily-snapshot workflow
+(README, Next steps) would let browsers skip most of those calls. That
+workflow would run from GitHub's shared runner IPs, and Open-Meteo's creator
+has noted the per-IP limits are awkward for shared hosting, so it's worth
+testing before relying on it.
+
+**Smaller things.**
+- ~40 resorts have no known top elevation (OpenSkiMap has no run/lift data
+  for them); the UI shows a dash.
+- Filters and the list card were checked at desktop width only; the small-
+  screen layout (chips wrapping, list capped at 70vh) hasn't been looked at
+  on a real phone.
+- Filter state isn't in the URL, so a filtered view can't be shared.
+- All ~480 markers are SVG paths, which is fine at this size and is what
+  gives us keyboard/ARIA hooks; a Canvas renderer would only matter if the
+  count grew a lot.

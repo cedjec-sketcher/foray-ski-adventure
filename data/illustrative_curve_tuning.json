@@ -98,5 +98,40 @@
     "peak_cm": 250,
     "min_c": -8,
     "edge_c": 6
+  },
+  "tsugaike_kogen": {
+    "peak_cm": 200,
+    "min_c": -8,
+    "edge_c": 6
+  },
+  "takasu_snow_park": {
+    "peak_cm": 180,
+    "min_c": -6,
+    "edge_c": 7
+  },
+  "sahoro": {
+    "peak_cm": 120,
+    "min_c": -14,
+    "edge_c": 3
+  },
+  "hoshino_resorts_nekoma_mountain": {
+    "peak_cm": 170,
+    "min_c": -8,
+    "edge_c": 6
+  },
+  "joetsu_international": {
+    "peak_cm": 150,
+    "min_c": -6,
+    "edge_c": 8
+  },
+  "tomamu_ski_resort": {
+    "peak_cm": 150,
+    "min_c": -13,
+    "edge_c": 3
+  },
+  "hakuba_iwatake": {
+    "peak_cm": 170,
+    "min_c": -8,
+    "edge_c": 6
   }
 }

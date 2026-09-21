@@ -5,9 +5,10 @@
 Foray Ski Adventure is a static, backend-free web page, deployed via GitHub
 Pages. There's no server: a Ruby build script computes everything it can
 ahead of time and inlines it into `index.html` as JSON, so the page renders
-instantly from that snapshot on load — and then the browser makes one direct
-request to Open-Meteo to refresh live conditions in place. Historically (see
-below) even that client-side request wasn't possible.
+instantly from that snapshot on load — and then the browser makes direct
+requests to Open-Meteo, in batches and only for the resorts currently on
+screen, to refresh live conditions in place. Historically (see below) even
+that client-side request wasn't possible.
 
 This shape is a holdover from the project's original deployment target, a
 Claude Artifact, which sandboxes the page: no outbound network requests, no
@@ -21,7 +22,9 @@ no live fetch, since it has no other option.
 
 ```mermaid
 flowchart LR
-  R[data/resorts.json<br/>resort facts] --> B(scripts/build_data.rb)
+  OSK[(OpenSkiMap<br/>ski_areas.geojson)] -.->|one-off / occasional| IMP(scripts/import_openskimap.rb<br/>lib/openskimap_import.rb)
+  IMP -.-> R
+  R[data/resorts.json<br/>~480 resorts: facts + tier] --> B(scripts/build_data.rb)
   TU[data/illustrative_curve_tuning.json<br/>peak_cm/min_c/edge_c by id] --> B
   CFG[config/season.json<br/>season dates, bell width] --> B
   PR[lib/providers.rb<br/>picks a provider by name/env] --> B
@@ -35,20 +38,31 @@ flowchart LR
   T --> I[index.html<br/>final page, data inlined]
 ```
 
+The dotted path at the top is separate from the normal build:
+`scripts/import_openskimap.rb` occasionally folds operating downhill areas
+from OpenSkiMap into `data/resorts.json` (see "Resort import" under Key
+design decisions). `resorts.json` is committed, and `build_data.rb` just
+reads it.
+
 `scripts/build_data.rb` is a thin orchestrator:
 
 1. **Merge resort facts with curve-tuning knobs.** `data/resorts.json` holds
-   *facts* (name, region, coordinates, elevation); `typical_peak_cm`/
-   `typical_min_c`/`typical_edge_c` live separately in
-   `data/illustrative_curve_tuning.json`, keyed by resort id, and get merged
-   in by id. Once a resort has real historical data, its tuning entry just
-   goes away — `resorts.json` itself never needs to change shape for that.
+   *facts* (name, region, prefecture, coordinates, elevation, size tier, run
+   length); `typical_peak_cm`/`typical_min_c`/`typical_edge_c` live
+   separately in `data/illustrative_curve_tuning.json`, keyed by resort id,
+   and get merged in by id. **An entry is optional: a resort without one has
+   no typical-season curve and is live-only** — that's the case for all but
+   the ~27 larger resorts. Once a resort has real historical data, its
+   tuning entry just goes away — `resorts.json` itself never needs to change
+   shape for that. A tuning key that matches no resort raises, since a typo
+   there would otherwise silently drop a curve.
 2. **Fetch live conditions**, from whichever provider `lib/providers.rb`
    resolves (`SNOWPACK_PROVIDER` env var, default `open_meteo`).
-   `Providers::OpenMeteo#fetch` makes one batched HTTPS request to
-   Open-Meteo for all resorts' current `snow_depth` and `temperature_2m` —
-   it's the one part of the pipeline that touches the network, isolated so
-   a test can stub it instead of hitting the real API.
+   `Providers::OpenMeteo#fetch` requests Open-Meteo for all resorts' current
+   `snow_depth` and `temperature_2m`, 100 locations per request (coordinates
+   travel in the query string, so ~480 in one GET would exceed common URL
+   limits) — it's the one part of the pipeline that touches the network,
+   isolated so a test can stub it instead of hitting the real API.
    `Providers::Fixture#fetch` instead reads a captured snapshot
    (`data/fixture_conditions.json`) with no network access at all — real
    value on its own (offline development, a flaky connection, fast
@@ -68,7 +82,9 @@ flowchart LR
    `assets/app.js`/`assets/styles.css`'s `<script src>`/`<link href>`
    stamped with `?v=<8-char MD5 of that file's own content>`). An asset
    whose content didn't change keeps the same hash, so this only busts the
-   cache for files that actually changed.
+   cache for files that actually changed. Every `<` in the spliced JSON is
+   written as `\u003c`: resort names come from a third-party dataset, and a
+   `</script>` inside one would otherwise end the data element early.
 
 There's no map-projection step here anymore — resorts carry their raw
 `lat`/`lon` straight through, and Leaflet does the projection in the browser.
@@ -82,28 +98,35 @@ inlined in the page, since that's the one thing that has to travel with it.
 [Leaflet](https://leafletjs.com/) (loaded from cdnjs), which owns the map
 itself, while everything else — state, rendering, the chart — is plain
 DOM/SVG with no framework. There's one mutable `state` object
-(`{ mode, dayIndex, selectedId }`), changed only through `setState(patch)`,
-and a `refreshAll()` function that re-derives all on-screen output from
-`state` + the embedded `DATA`:
+(`{ mode, dayIndex, selectedId, regions, tiers, query, mapOnly }`), changed
+only through `setState(patch)`, and a `refreshAll()` function that
+re-derives all on-screen output from `state` + the embedded `DATA` + the
+map's current zoom and bounds:
 
 | Function | Responsibility |
 |---|---|
 | `getDisplay(resort)` | Picks live vs. typical-season values for one resort based on `state.mode`/`state.dayIndex` |
 | `tempToColor(temp, coldHex, midHex, warmHex)` | Diverging color scale, temperature → hex/rgb |
 | `depthToRadius(depth)` | Area-proportional size scale, snow depth → marker radius |
-| `renderMarkers()` | Updates every Leaflet `circleMarker`'s radius/fill/stroke via `setStyle()` |
-| `renderList()` | Updates each resort row's pre-built child `<span>`s via `.textContent` |
+| `classifyResort(resort, ctx)` | Pure. Decides `'active'` / `'dim'` / `'hidden'` from mode, zoom, filters, search and selection (see "Showing ~480 resorts" below) |
+| `renderMarkers()` | Adds/removes each `circleMarker` from a layer group by its class, and styles the visible ones via `setStyle()` |
+| `renderList()` | Shows/hides each resort's pre-built row with `hidden`, and updates the visible rows' child `<span>`s via `.textContent` |
+| `renderFilters()` / `renderStatus()` | Chip on/off state and counts; the "Showing N of M" line |
+| `refreshMapView()` | The map-view-dependent part of a refresh (markers, list, filters, status, live refresh), run on every map `moveend` so panning doesn't also redraw the detail chart |
+| `refreshLiveConditions(resorts)` | Batched, once-per-resort client-side Open-Meteo refresh of what's currently on screen |
 | `renderSizeLegend()` | Draws the size-legend circles using the same `depthToRadius` scale |
 | `renderChart(resort)` / `renderFigures(resort)` | Draws the selected resort's season chart and monthly-figures table |
 | `renderDetail(resort)` | Updates the stat row and calls the chart/figures renderers |
 | `updateSelectionHighlight()` | Toggles `.is-selected` on the marker and row matching `state.selectedId` |
-| `refreshAll()` | Calls all of the above, in order — the one function that makes the DOM match `state` |
+| `refreshAll()` | `refreshMapView()` plus the legend, detail card and date label — the one function that makes the DOM match `state` |
 | `setState(patch)` | `Object.assign(state, patch)`, then `refreshAll()` — the only way `state` changes |
 | `select(id)` / `setMode(mode)` / slider handler | Each calls `setState(...)` with its own patch; `setMode` also updates the mode-toggle widget's own visual state first, since that's the control's own concern rather than a `state`-driven render |
 
 There is no framework, no virtual DOM, and no build step on the client side —
 `refreshAll()` just re-renders everything on every state change, which is fine
-at this scale (20 resorts, a handful of DOM nodes each).
+at this scale: ~480 resorts, but classification is a cheap pure function, at
+most a few hundred markers are ever on the map, and rows are built once and
+only shown or hidden.
 
 ## Key design decisions
 
@@ -233,6 +256,61 @@ at this scale (20 resorts, a handful of DOM nodes each).
   across a full range of values. It is explicitly labeled as illustrative
   everywhere it appears.
 
+### Showing ~480 resorts
+
+- **Resort import.** `lib/openskimap_import.rb` (pure, unit-tested) turns
+  OpenSkiMap's `ski_areas.geojson` into resort entries; `scripts/
+  import_openskimap.rb` downloads it (cached in `tmp/`, since OpenSkiMap
+  asks for at most one automated download a day) and rewrites
+  `data/resorts.json`. Curated resorts keep their own name and coordinates
+  and are matched to OpenSkiMap **by name pattern, not by proximity**: the
+  hand-placed coordinates sit 1-6 km from OpenSkiMap's, and a nearest-
+  neighbour match picks the wrong resort in a crowded valley (Appi's nearest
+  neighbour is a different resort). One curated resort can absorb many
+  OpenSkiMap areas — Shiga Kogen is 19 of them. Re-running is idempotent and
+  never rewrites an existing entry, so hand edits survive.
+- **Size tiers.** `major` (>= 20 km of downhill runs, or hand-picked),
+  `medium` (>= 8 km), `small`. Run length is a proxy for "a real resort
+  rather than a local hill" that needs no judgement calls.
+- **Zoom decides what's drawn, filters decide what's highlighted.** Major
+  resorts are always on the map; medium ones appear from zoom 6 and small
+  ones from zoom 8 (`TIER_MIN_ZOOM`; the opening view is zoom 5). Region and
+  size chips and the search box are *filters*: a revealed resort that
+  fails them becomes a faint, non-interactive dot rather than disappearing,
+  so you keep the geography. A resort that is not yet revealed by zoom is
+  never dimmed — that would be hundreds of grey dots at the country-wide
+  view. A search match is revealed at any zoom, so finding a small resort by
+  name never requires knowing where to zoom first. All of this is
+  `classifyResort`, a pure function with unit tests.
+- **The list follows the map.** With "Only resorts in map view" on (the
+  default), the list shows what is drawn *and* in the viewport, so panning
+  and zooming are themselves filters. A search match is listed wherever it
+  is, and clicking a row pans/zooms the map to it if needed. The selected
+  resort is always drawn (you don't lose it on the map when a filter would
+  exclude it) but only gets a list row if it passes the filters.
+- **Live-only resorts are hidden in Typical season mode**, not shown with
+  today's values: a slider scrubbing a hypothetical February shouldn't have
+  markers quietly showing September's numbers. The status line says how many
+  are hidden and why. Selecting one in Live mode and then switching still
+  shows its detail card, with a note in place of the chart.
+- **Live refresh is lazy.** Open-Meteo's free tier allows 600 calls/minute,
+  5,000/hour and 10,000/day per IP, and doesn't document whether a request
+  for 100 locations counts as one call or 100. If each location counts,
+  refreshing all ~480 on every page load would let a handful of reloads hit
+  the limit, so the page is built for that worse case: it refreshes only
+  what is drawn and near the viewport, in batches of 100, once per resort per
+  page view (a failed batch isn't retried, for the same reason). Measured:
+  27 locations at load, ~110 the first time you zoom into a dense valley,
+  none when you return. Anything not yet refreshed shows the build-time
+  snapshot. The header says "PARTLY LIVE" if some batches failed.
+- **Marker DOM elements are recreated whenever a marker is re-added to the
+  map**, so the keyboard/ARIA wiring runs after each add rather than once,
+  and the `is-selected` class is re-applied on every refresh.
+- **`[hidden]` needs help.** Rows and groups use `display:grid`/`flex`, which
+  beats the `hidden` attribute's default `display:none`, so the stylesheet
+  restates it (`.resort-row[hidden]{display:none}`). Without that, "hidden"
+  rows just stay on screen.
+
 ## Known constraints (as of this snapshot)
 
 - Live conditions refresh client-side on GitHub Pages, but the "typical
@@ -247,15 +325,22 @@ at this scale (20 resorts, a handful of DOM nodes each).
   depended on none. OpenStreetMap's tile server has a fair-use policy; fine
   at this project's traffic, worth knowing about if that changes.
 - No real historical data — the "typical season" curve is a hand-tuned bell
-  curve, not recorded observations.
+  curve, not recorded observations. Only ~27 of ~480 resorts have one, and
+  the 7 added with the OpenSkiMap import are rough estimates by analogy to
+  neighbouring curated resorts (see PROPOSALS.md, "Backlog").
+- Resort names are OpenSkiMap's, lightly cleaned; ~40 resorts have no known
+  top elevation. Both are in the PROPOSALS.md backlog.
 - `rake test` covers the Ruby side (`lib/season_curve.rb`,
-  `lib/providers/open_meteo.rb` with the network call stubbed, and
-  `test/theme_tokens_test.rb` guarding the three CSS `:root` blocks against
-  drifting out of sync with each other) and `node --test test/js` covers
-  `assets/app.js`'s pure functions. `.github/workflows/test.yml` runs both,
+  `lib/providers/open_meteo.rb` with the network call stubbed,
+  `lib/openskimap_import.rb`, `test/theme_tokens_test.rb` guarding the three
+  CSS `:root` blocks against drifting out of sync, and
+  `test/region_consistency_test.rb` checking that the Ruby importer,
+  `app.js`, the CSS tokens and the real data all agree on the region list)
+  and `node --test test/js` covers `assets/app.js`'s pure functions,
+  including all of the marker/list visibility logic. `.github/workflows/test.yml` runs both,
   as separate jobs, on every push and pull request to `main`. Not covered:
   `getDisplay` (closes over
-  DOM-guarded state) and anything that needs a real DOM — 20 markers
+  DOM-guarded state) and anything that needs a real DOM — markers
   actually rendering, clicking one actually updating the detail panel, and
   so on. That's still manual (or a future headless-browser smoke test, see
   PROPOSALS.md §3b).

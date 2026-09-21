@@ -14,9 +14,16 @@ resorts = JSON.parse(File.read(File.join(DATA_DIR, "resorts.json")))
 # resort facts (name, region, coordinates) — once a resort has real
 # historical data, it stops needing an entry here without resorts.json
 # itself changing shape. Merge them in by id for the rest of this script.
+#
+# A resort with no entry simply has no typical-season curve: the page shows
+# it in Live mode only. Only the larger resorts have entries.
 tuning = JSON.parse(File.read(File.join(DATA_DIR, "illustrative_curve_tuning.json")))
+orphans = tuning.keys - resorts.map { |r| r["id"] }
+raise "Tuning entries for unknown resort id(s): #{orphans.join(', ')}" unless orphans.empty?
+
 resorts.each do |r|
-  knobs = tuning.fetch(r["id"]) { raise "No illustrative-curve tuning for resort #{r['id'].inspect}" }
+  knobs = tuning[r["id"]]
+  next unless knobs
   r["typical_peak_cm"] = knobs.fetch("peak_cm")
   r["typical_min_c"] = knobs.fetch("min_c")
   r["typical_edge_c"] = knobs.fetch("edge_c")
@@ -38,6 +45,7 @@ bell_width = season_config.fetch("bell_width")
 step_days = season_config.fetch("step_days")
 
 resorts.each do |r|
+  next unless r["typical_peak_cm"]
   depth_curve, temp_curve = SeasonCurve.generate(
     peak_cm: r["typical_peak_cm"], min_c: r["typical_min_c"], edge_c: r["typical_edge_c"],
     season_start: season_start, season_end: season_end, peak_date: peak_date,
@@ -47,8 +55,15 @@ resorts.each do |r|
   r["typical_season_temp_c"] = temp_curve
 end
 
+# Importer bookkeeping (data/resorts.json keeps it so re-imports stay
+# idempotent) isn't something the page needs, and across ~500 resorts it adds up.
+resorts.each { |r| %w[osm_id osm_ids lift_count].each { |k| r.delete(k) } }
+
 out = {
   "generated_at" => live["fetched_at"],
+  # Travels with the data if someone copies ski_data.json out of the repo;
+  # see DATA_LICENSE.md.
+  "data_license" => "Resort names, locations, elevations and run lengths: ODbL 1.0, from OpenSkiData / OpenSkiMap.org, (c) OpenStreetMap contributors, Skimap.org, Who's On First, (c) Mapterhorn. Snow depth, temperature and weather code: CC BY 4.0, Open-Meteo.com. See DATA_LICENSE.md in the project repository.",
   "generated_note" => "Live snow depth/temperature fetched from Open-Meteo (api.open-meteo.com) at build time. Typical-season curves are illustrative seasonal patterns based on each resort's known typical peak base depth, not measured historical data.",
   "resorts" => resorts,
 }
@@ -59,7 +74,10 @@ STDERR.puts "Wrote data/ski_data.json, bytes=#{json_str.length}"
 
 # splice the fresh data into index.html from the template
 template = File.read(File.join(ROOT, "template.html"), encoding: "UTF-8")
-html = template.sub("__SKI_DATA_JSON__") { json_str }
+# Resort names come from a third-party dataset (OpenSkiMap) and this JSON sits
+# inside a <script> element, where a "</script>" in a name would end it early.
+# The JSON escape \u003c means "<" to any JSON parser, so write every one that way.
+html = template.sub("__SKI_DATA_JSON__") { json_str.gsub("<") { "\\u003c" } }
 
 # Cache-bust assets/app.js and assets/styles.css with a hash of their own
 # content, so a real change always reaches browsers immediately instead of

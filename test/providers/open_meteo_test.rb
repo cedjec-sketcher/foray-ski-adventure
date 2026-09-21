@@ -53,6 +53,43 @@ class OpenMeteoProviderTest < Minitest::Test
     assert_match(/mismatch/i, error.message)
   end
 
+  # A stand-in for Net::HTTP.get that answers each request with one entry per
+  # requested location, encoding the location's latitude as its snow depth so
+  # a test can tell the batches came back in the right order. Records the
+  # number of locations in each request it sees.
+  def echoing_api(requests)
+    lambda do |uri|
+      lats = uri.query[/latitude=([^&]*)/, 1].split(",").map(&:to_f)
+      requests << lats.length
+      entries = lats.map do |lat|
+        { "current" => { "time" => "2026-02-14T12:00", "snow_depth" => lat / 100.0, "temperature_2m" => 0.0, "weather_code" => 0 } }
+      end
+      JSON.generate(lats.length == 1 ? entries.first : entries)
+    end
+  end
+
+  def numbered_resorts(count)
+    (1..count).map { |i| { "lat" => i.to_f, "lon" => 138.0 } }
+  end
+
+  def test_fetch_splits_a_large_resort_list_into_batches_and_preserves_order
+    requests = []
+    result = Net::HTTP.stub(:get, echoing_api(requests)) { Providers::OpenMeteo.new.fetch(numbered_resorts(250)) }
+
+    assert_equal [100, 100, 50], requests
+    assert_equal 250, result["conditions"].length
+    assert_equal (1..250).map(&:to_f), result["conditions"].map { |c| c["snow_depth_cm"] }
+  end
+
+  def test_fetch_handles_a_final_batch_of_exactly_one_location
+    requests = []
+    result = Net::HTTP.stub(:get, echoing_api(requests)) { Providers::OpenMeteo.new.fetch(numbered_resorts(101)) }
+
+    assert_equal [100, 1], requests
+    assert_equal 101, result["conditions"].length
+    assert_equal 101.0, result["conditions"].last["snow_depth_cm"]
+  end
+
   def test_fetch_raises_on_a_non_array_response
     body = JSON.generate({ "error" => true, "reason" => "Invalid latitude" })
 

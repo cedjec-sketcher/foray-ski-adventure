@@ -118,3 +118,132 @@ test('computeTooltipPosition clamps to a small margin when the viewport is too s
   const pos = app.computeTooltipPosition(5, 5, 220, 99, 110, 50, 14);
   assert.deepEqual(pos, { x: 4, y: 4 });
 });
+
+// ---- resort filtering / visibility ----
+// Fixtures: a resort with a typical-season curve (curved) and one without
+// (live-only), across tiers and regions.
+const CURVE = [['2026-02-14', 100]];
+const R = {
+  niseko: { id: 'niseko', name: 'Niseko United', region: 'Hokkaido', prefecture: 'Hokkaido', tier: 'major', typical_season_cm: CURVE },
+  happo: { id: 'happo', name: 'Hakuba Happo-one', region: 'Nagano', prefecture: 'Nagano', tier: 'major', typical_season_cm: CURVE },
+  goryu: { id: 'goryu', name: 'Hakuba Goryu', region: 'Nagano', prefecture: 'Nagano', tier: 'medium' },
+  tiny: { id: 'tiny', name: 'Tiny Hill', region: 'Chubu', prefecture: 'Gifu', tier: 'small' },
+};
+const ALL_TIERS = ['major', 'medium', 'small'];
+const ctx = (over) => Object.assign({ mode: 'live', zoom: 5, regions: [], tiers: ALL_TIERS, query: '', selectedId: null }, over);
+
+test('hasCurve is true only for a resort with a non-empty typical-season curve', () => {
+  assert.equal(app.hasCurve(R.niseko), true);
+  assert.equal(app.hasCurve(R.goryu), false);
+  assert.equal(app.hasCurve({ typical_season_cm: [] }), false);
+});
+
+test('fmtElevation shows metres, or a dash when the elevation is unknown', () => {
+  assert.equal(app.fmtElevation({ elevation_top_m: 1308 }), '1308m');
+  assert.equal(app.fmtElevation({ elevation_top_m: null }), '—');
+  assert.equal(app.fmtElevation({}), '—');
+});
+
+test('escapeHtml escapes markup so a resort name cannot inject HTML', () => {
+  assert.equal(app.escapeHtml('<img src=x onerror="a()">&\''), '&lt;img src=x onerror=&quot;a()&quot;&gt;&amp;&#39;');
+  assert.equal(app.escapeHtml('Niseko United'), 'Niseko United');
+});
+
+test('isTierRevealed: major always, medium and small from their zoom thresholds', () => {
+  const { medium, small } = app.TIER_MIN_ZOOM;
+  assert.equal(app.isTierRevealed('major', 0), true);
+  assert.equal(app.isTierRevealed('medium', medium - 1), false);
+  assert.equal(app.isTierRevealed('medium', medium), true);
+  assert.equal(app.isTierRevealed('small', small - 1), false);
+  assert.equal(app.isTierRevealed('small', small), true);
+});
+
+test('isTierRevealed treats an unknown tier like the smallest one', () => {
+  assert.equal(app.isTierRevealed('mystery', app.TIER_MIN_ZOOM.small - 1), false);
+  assert.equal(app.isTierRevealed('mystery', app.TIER_MIN_ZOOM.small), true);
+});
+
+test('matchesQuery matches name, prefecture and region case-insensitively, and everything when empty', () => {
+  assert.equal(app.matchesQuery(R.happo, 'HAKUBA'), true);
+  assert.equal(app.matchesQuery(R.tiny, 'gifu'), true);
+  assert.equal(app.matchesQuery(R.tiny, 'chubu'), true);
+  assert.equal(app.matchesQuery(R.tiny, 'hakuba'), false);
+  assert.equal(app.matchesQuery(R.tiny, ''), true);
+  assert.equal(app.matchesQuery(R.tiny, '   '), true);
+});
+
+test('matchesQuery tolerates a resort with no prefecture', () => {
+  assert.equal(app.matchesQuery({ name: 'X', region: 'Nagano' }, 'nagano'), true);
+  assert.equal(app.matchesQuery({ name: 'X', region: 'Nagano' }, 'gifu'), false);
+});
+
+test('passesFilters combines region, tier and search', () => {
+  assert.equal(app.passesFilters(R.happo, ctx({ regions: ['Nagano'] })), true);
+  assert.equal(app.passesFilters(R.niseko, ctx({ regions: ['Nagano'] })), false);
+  assert.equal(app.passesFilters(R.goryu, ctx({ tiers: ['major'] })), false);
+  assert.equal(app.passesFilters(R.happo, ctx({ query: 'goryu' })), false);
+  assert.equal(app.passesFilters(R.happo, ctx()), true);
+});
+
+test('isEligible: live mode shows everything, season mode only resorts with a curve', () => {
+  assert.equal(app.isEligible(R.goryu, 'live'), true);
+  assert.equal(app.isEligible(R.goryu, 'season'), false);
+  assert.equal(app.isEligible(R.niseko, 'season'), true);
+});
+
+test('classifyResort: a live-only resort is hidden in season mode whatever else is true', () => {
+  assert.equal(app.classifyResort(R.goryu, ctx({ mode: 'season', zoom: 12 })), 'hidden');
+  assert.equal(app.classifyResort(R.goryu, ctx({ mode: 'season', zoom: 12, selectedId: 'goryu' })), 'hidden');
+});
+
+test('classifyResort: smaller tiers stay hidden until their reveal zoom', () => {
+  const { medium, small } = app.TIER_MIN_ZOOM;
+  assert.equal(app.classifyResort(R.goryu, ctx({ zoom: medium - 1 })), 'hidden');
+  assert.equal(app.classifyResort(R.goryu, ctx({ zoom: medium })), 'active');
+  assert.equal(app.classifyResort(R.tiny, ctx({ zoom: small - 1 })), 'hidden');
+  assert.equal(app.classifyResort(R.tiny, ctx({ zoom: small })), 'active');
+});
+
+test('classifyResort: a revealed resort the filters exclude is dimmed, not hidden', () => {
+  assert.equal(app.classifyResort(R.niseko, ctx({ regions: ['Nagano'] })), 'dim');
+});
+
+test('classifyResort: a resort below its reveal zoom stays hidden even when filtered out (no swarm of dim dots)', () => {
+  assert.equal(app.classifyResort(R.tiny, ctx({ zoom: 5, regions: ['Nagano'] })), 'hidden');
+});
+
+test('classifyResort: a search match is revealed at any zoom, non-matches follow the normal rules', () => {
+  assert.equal(app.classifyResort(R.goryu, ctx({ zoom: 3, query: 'goryu' })), 'active');
+  assert.equal(app.classifyResort(R.tiny, ctx({ zoom: 3, query: 'goryu' })), 'hidden');
+  assert.equal(app.classifyResort(R.niseko, ctx({ zoom: 3, query: 'goryu' })), 'dim');
+});
+
+test('classifyResort: the selected resort stays active even when the filters exclude it', () => {
+  assert.equal(app.classifyResort(R.niseko, ctx({ regions: ['Nagano'], selectedId: 'niseko' })), 'active');
+});
+
+test('classifyResort: a tier filter turns a revealed resort into a dim dot', () => {
+  assert.equal(app.classifyResort(R.goryu, ctx({ zoom: 8, tiers: ['major'] })), 'dim');
+});
+
+test('isListed follows the map view, but a search match is listed wherever it is', () => {
+  assert.equal(app.isListed('active', true, false, true, true), true);
+  assert.equal(app.isListed('active', true, false, false, true), false);
+  assert.equal(app.isListed('active', true, true, false, true), true, 'search match outside the view');
+  assert.equal(app.isListed('active', true, false, false, false), true, 'map-view limit switched off');
+});
+
+test('isListed never lists a dim or hidden resort', () => {
+  assert.equal(app.isListed('dim', true, true, true, false), false);
+  assert.equal(app.isListed('hidden', true, true, true, false), false);
+});
+
+test('isListed does not list the selected resort when the filters exclude it, though it stays on the map', () => {
+  assert.equal(app.isListed('active', false, true, true, true), false);
+});
+
+test('REGION_ORDER lists the seven regions north to south', () => {
+  // test/region_consistency_test.rb checks this list against the Ruby
+  // importer's, the CSS colour tokens, and the regions in data/resorts.json.
+  assert.deepEqual(app.REGION_ORDER, ['Hokkaido', 'Tohoku', 'Kanto', 'Niigata', 'Nagano', 'Chubu', 'Western Japan']);
+});

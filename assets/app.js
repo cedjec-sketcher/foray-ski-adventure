@@ -7,8 +7,15 @@
   // bottom). Everything that does touch the DOM/Leaflet/fetch lives inside
   // the `typeof document !== 'undefined'` guard further down, which a
   // require() in Node skips entirely.
-  var REGION_ORDER = ["Hokkaido","Tohoku","Nagano","Niigata"];
-  var REGION_VAR = {Hokkaido:"--hokkaido", Tohoku:"--tohoku", Nagano:"--nagano", Niigata:"--niigata"};
+  var REGION_ORDER = ["Hokkaido","Tohoku","Kanto","Niigata","Nagano","Chubu","Western Japan"];
+  var REGION_VAR = {Hokkaido:"--hokkaido", Tohoku:"--tohoku", Kanto:"--kanto", Niigata:"--niigata",
+    Nagano:"--nagano", Chubu:"--chubu", "Western Japan":"--west"};
+  // Size tiers (assigned at import time from downhill run length; see
+  // lib/openskimap_import.rb) and the map zoom at which each becomes visible.
+  // Major resorts are always shown; smaller ones appear as you zoom in, so
+  // ~450 markers never pile up on the country-wide view.
+  var TIER_ORDER = ["major","medium","small"];
+  var TIER_MIN_ZOOM = { major: 0, medium: 6, small: 8 };
   var MAX_PEAK = 320; // fixed y-domain so charts are comparable across resorts (Hakkoda tops out near 300)
   var DEPTH_DOMAIN = 300; // marker area scale domain
   var TEMP_COLD = -16, TEMP_MID = 0, TEMP_WARM = 20;
@@ -57,6 +64,78 @@
     return d.toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZoneName:"short"});
   }
 
+  // Only larger resorts have a typical-season pattern (see
+  // data/illustrative_curve_tuning.json); the rest are live-only.
+  function hasCurve(r){
+    return Array.isArray(r.typical_season_cm) && r.typical_season_cm.length > 0;
+  }
+
+  function fmtElevation(r){
+    return r.elevation_top_m ? r.elevation_top_m + "m" : "—";
+  }
+
+  // Resort names come from a third-party dataset and end up in innerHTML
+  // (the map tooltip), so they're escaped rather than trusted.
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  function isTierRevealed(tier, zoom){
+    var min = TIER_MIN_ZOOM.hasOwnProperty(tier) ? TIER_MIN_ZOOM[tier] : TIER_MIN_ZOOM.small;
+    return zoom >= min;
+  }
+
+  // Case-insensitive substring match on name, prefecture and region, so
+  // "gifu", "hakuba" and "tohoku" all find what you'd expect.
+  function matchesQuery(r, query){
+    var q = (query || "").trim().toLowerCase();
+    if(q === "") return true;
+    return [r.name, r.prefecture, r.region].some(function(field){
+      return field && String(field).toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
+  // ctx: { regions: [] (empty = all), tiers: [enabled tier names], query }
+  function passesFilters(r, ctx){
+    return (ctx.regions.length === 0 || ctx.regions.indexOf(r.region) !== -1) &&
+      ctx.tiers.indexOf(r.tier) !== -1 &&
+      matchesQuery(r, ctx.query);
+  }
+
+  // Whether the resort has anything to show in the current mode at all.
+  function isEligible(r, mode){
+    return mode === "live" || hasCurve(r);
+  }
+
+  // How a resort should appear on the map right now:
+  //   'active' - a normal marker (and a row in the list)
+  //   'dim'    - filtered out, but drawn as a faint dot so you keep the
+  //              geography (only for resorts that would otherwise be showing)
+  //   'hidden' - not drawn
+  // ctx: { mode, zoom, regions, tiers, query, selectedId }
+  function classifyResort(r, ctx){
+    if(!isEligible(r, ctx.mode)) return "hidden";
+    if(r.id === ctx.selectedId) return "active";
+    var searching = (ctx.query || "").trim() !== "";
+    var matches = matchesQuery(r, ctx.query);
+    // A search match is always revealed, whatever the zoom: finding a small
+    // resort by name shouldn't require already knowing where to zoom.
+    var revealed = isTierRevealed(r.tier, ctx.zoom) || (searching && matches);
+    if(!revealed) return "hidden";
+    return passesFilters(r, ctx) ? "active" : "dim";
+  }
+
+  // The list follows the map (only resorts in view), except that a search
+  // match is listed wherever it is - clicking it then pans the map there.
+  // `passes` is separate from cls because the selected resort is always
+  // drawn 'active' (so you don't lose it on the map) even if the filters
+  // exclude it, but it shouldn't get a list row the filters say shouldn't exist.
+  function isListed(cls, passes, matchesSearch, inView, mapOnly){
+    return cls === "active" && passes && (!mapOnly || inView || matchesSearch);
+  }
+
   // Default: below and to the right of the cursor. Flips to the other side
   // of the cursor on whichever axis would otherwise push the tooltip past
   // the viewport edge (a marker near the bottom of the map used to send the
@@ -75,10 +154,16 @@
   if (typeof document !== 'undefined') {
   // ---- everything below touches the DOM, Leaflet, or fetch ----
   var DATA = JSON.parse(document.getElementById('ski-data').textContent);
-  var DATES = DATA.resorts[0].typical_season_cm.map(function(p){ return p[0]; });
+  var DATES = DATA.resorts.filter(hasCurve)[0].typical_season_cm.map(function(p){ return p[0]; });
   var PEAK_INDEX = 25; // mid-Feb, index into the 3-day-step curve arrays
 
-  var state = { mode: 'season', dayIndex: PEAK_INDEX, selectedId: null };
+  var state = {
+    mode: 'season', dayIndex: PEAK_INDEX, selectedId: null,
+    regions: [],                 // empty = every region
+    tiers: TIER_ORDER.slice(),   // enabled size tiers
+    query: '',
+    mapOnly: true                // list only what's in the map view
+  };
 
   function cssVar(name){
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -86,7 +171,10 @@
   function regionColor(region){ return cssVar(REGION_VAR[region] || "--accent"); }
 
   function getDisplay(r){
-    if(state.mode === 'live'){
+    // A live-only resort has no typical-season numbers, so it always shows
+    // its live ones (the map hides it in season mode, but the detail card
+    // can still be showing it).
+    if(state.mode === 'live' || !hasCurve(r)){
       return { depth: r.snow_depth_cm, temp: r.temperature_c, label: 'Live now' };
     }
     var d = r.typical_season_cm[state.dayIndex][1];
@@ -97,46 +185,90 @@
 
   // ---- header meta ----
   function updateFetchMeta(){
-    var label = DATA.live_fetch_ok === false ? "SNAPSHOT (LIVE REFRESH FAILED)" : "LIVE DATA FETCHED";
+    var label = "LIVE DATA FETCHED";
+    if(DATA.live_fetch_ok === false) label = "SNAPSHOT (LIVE REFRESH FAILED)";
+    else if(DATA.live_fetch_ok === 'partial') label = "PARTLY LIVE (SOME REFRESHES FAILED)";
     document.getElementById('fetch-meta').innerHTML =
-      label + "<br>" + fmtFetched(DATA.generated_at) + " JST<br>source: open-meteo.com";
+      label + "<br>" + fmtFetched(DATA.generated_at) + ' JST<br>source: <a href="https://open-meteo.com/">open-meteo.com</a>';
   }
   updateFetchMeta();
 
   // ---- live client-side refresh ----
-  // The page renders instantly from the snapshot baked in at build time (above);
-  // this fetches current conditions directly from Open-Meteo and upgrades the
-  // in-memory data in place once it resolves. Falls back silently to the
-  // snapshot if the fetch fails for any reason (offline, API hiccup, etc).
-  function fetchLiveConditions(){
-    var lats = DATA.resorts.map(function(r){ return r.lat; }).join(",");
-    var lons = DATA.resorts.map(function(r){ return r.lon; }).join(",");
+  // The page renders instantly from the snapshot baked in at build time
+  // (above); this fetches current conditions directly from Open-Meteo and
+  // upgrades the in-memory data in place once it resolves. Falls back to the
+  // snapshot for anything that fails (offline, rate limit, API hiccup).
+  //
+  // Only resorts actually on screen are refreshed, in batches, and each at
+  // most once per page view. Open-Meteo's free tier allows 600 calls/minute,
+  // 5,000/hour and 10,000/day per IP, but doesn't document whether one
+  // request for 100 locations counts as 1 call or 100. So this is written for
+  // the worse case: refreshing all ~480 on every load could let a few reloads
+  // hit the limit if each location counts. Failed batches are not retried
+  // within a page view, for the same reason.
+  var LIVE_BATCH = 100;
+  var liveDone = {};      // id -> true once refreshed (or given up on)
+  var liveInFlight = {};  // id -> true while a request covering it is pending
+  var liveOk = 0, liveFailed = 0;
+
+  function refreshLiveConditions(resorts){
+    var todo = resorts.filter(function(r){ return !liveDone[r.id] && !liveInFlight[r.id]; });
+    for(var i = 0; i < todo.length; i += LIVE_BATCH){
+      fetchLiveBatch(todo.slice(i, i + LIVE_BATCH));
+    }
+  }
+
+  function fetchLiveBatch(batch){
+    batch.forEach(function(r){ liveInFlight[r.id] = true; });
+    var lats = batch.map(function(r){ return r.lat; }).join(",");
+    var lons = batch.map(function(r){ return r.lon; }).join(",");
     var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lats + "&longitude=" + lons +
       "&current=snow_depth,temperature_2m,weather_code&timezone=Asia%2FTokyo";
     fetch(url).then(function(res){
       if(!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
     }).then(function(live){
-      if(!Array.isArray(live) || live.length !== DATA.resorts.length){
-        throw new Error("unexpected response shape");
-      }
+      // Open-Meteo answers a single location with a bare object, not an array.
+      if(!Array.isArray(live)) live = [live];
+      if(live.length !== batch.length) throw new Error("unexpected response shape");
       var fetchedAt = null;
-      DATA.resorts.forEach(function(r, i){
+      batch.forEach(function(r, i){
         var cur = live[i].current;
         r.snow_depth_cm = Math.round(cur.snow_depth * 1000) / 10;
         r.temperature_c = cur.temperature_2m;
         r.weather_code = cur.weather_code;
         fetchedAt = cur.time;
       });
+      liveOk += batch.length;
       DATA.generated_at = fetchedAt;
-      DATA.live_fetch_ok = true;
-      updateFetchMeta();
-      if(state.mode === 'live') refreshAll();
+      DATA.live_fetch_ok = liveFailed ? 'partial' : true;
+      finishLiveBatch(batch, true);
     }).catch(function(err){
-      DATA.live_fetch_ok = false;
-      updateFetchMeta();
-      console.warn("Live conditions fetch failed, showing last-built snapshot:", err);
+      liveFailed += batch.length;
+      DATA.live_fetch_ok = liveOk ? 'partial' : false;
+      console.warn("Live conditions fetch failed, showing last-built snapshot for " + batch.length + " resorts:", err);
+      finishLiveBatch(batch, false);
     });
+  }
+
+  function finishLiveBatch(batch, ok){
+    batch.forEach(function(r){ delete liveInFlight[r.id]; liveDone[r.id] = true; });
+    updateFetchMeta();
+    if(ok && state.mode === 'live') refreshAll();
+  }
+
+  // Debounced: called after every map/list refresh, but only fires once the
+  // view has settled, and only for resorts that are drawn and in (or just
+  // beyond) the viewport.
+  var liveTimer = null;
+  function scheduleLiveRefresh(){
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(function(){
+      var area = map.getBounds().pad(0.25);
+      refreshLiveConditions(DATA.resorts.filter(function(r){
+        return classes[r.id] === 'active' && area.contains([r.lat, r.lon]);
+      }));
+    }, 350);
   }
 
   // ---- map ----
@@ -147,15 +279,21 @@
   // cursor happens to be over it. The zoom buttons, double-click, and touch
   // pinch-zoom (Leaflet defaults) all still work.
   var map = L.map('map', { scrollWheelZoom: false });
-  var bounds = L.latLngBounds(DATA.resorts.map(function(r){ return [r.lat, r.lon]; }));
-  map.fitBounds(bounds, { padding: [28, 28] });
+  // The opening view frames the major resorts only. Framing all ~480 would
+  // zoom out to take in Kyushu and Shikoku, shrinking the area where nearly
+  // all the major resorts are.
+  var MAJOR_BOUNDS = L.latLngBounds(DATA.resorts.filter(function(r){ return r.tier === 'major'; })
+    .map(function(r){ return [r.lat, r.lon]; }));
+  function fitOverview(){ map.fitBounds(MAJOR_BOUNDS, { padding: [28, 28] }); }
+  fitOverview();
 
   // A single tile source (plain OpenStreetMap, no API key ever required) kept
   // for both themes; dark mode is a CSS filter on the tile layer rather than a
   // second tile provider, since free "dark" tile services have a habit of
   // adding API-key requirements later without much notice.
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' +
+      ' &middot; resorts: <a href="https://openskimap.org">OpenSkiMap</a>',
     maxZoom: 18
   }).addTo(map);
 
@@ -171,33 +309,40 @@
   applyMapTheme();
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyMapTheme);
 
+  // Markers are added to / removed from this group as their class (see
+  // classifyResort) changes, rather than all being on the map all the time.
+  var markerLayer = L.layerGroup().addTo(map);
   var markerEls = {};
+  var classes = {};       // id -> 'active' | 'dim' | 'hidden', from the last renderMarkers()
   DATA.resorts.forEach(function(r){
     var m = L.circleMarker([r.lat, r.lon], { className: 'marker' });
     m.on('click', function(){ select(r.id); });
     m.on('mouseover', function(e){ showMapTip(e.originalEvent, r); });
     m.on('mousemove', function(e){ showMapTip(e.originalEvent, r); });
     m.on('mouseout', hideMapTip);
-    m.addTo(map);
-    // Leaflet's SVG renderer gives each circle marker a real DOM element, so it
-    // can be made keyboard-operable the same way the old plain-SVG markers were.
-    var el = m.getElement();
-    if(el){
-      el.setAttribute('tabindex', '0');
-      el.setAttribute('role', 'button');
-      el.addEventListener('keydown', function(e){
-        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); select(r.id); }
-      });
-    }
     markerEls[r.id] = m;
   });
+
+  // Leaflet's SVG renderer gives each circle marker a real DOM element, so it
+  // can be made keyboard-operable. That element is recreated every time the
+  // marker is re-added to the map, so this runs after each add, not once.
+  function wireMarkerElement(m, r){
+    var el = m.getElement();
+    if(!el || el._skiWired) return el;
+    el._skiWired = true;
+    el.setAttribute('role', 'button');
+    el.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); select(r.id); }
+    });
+    return el;
+  }
 
   var mapTip = document.getElementById('map-tooltip');
   function showMapTip(e, r){
     var disp = getDisplay(r);
-    mapTip.innerHTML = "<b>" + r.name + "</b>" + r.region + " &middot; " + r.elevation_top_m + "m top" +
+    mapTip.innerHTML = "<b>" + escapeHtml(r.name) + "</b>" + escapeHtml(r.region) + " &middot; " + fmtElevation(r) + " top" +
       "<br>" + disp.label + ": " + Math.round(disp.depth) + "cm, " + disp.temp.toFixed(1) + "&deg;C" +
-      "<br>Typical peak: " + r.typical_peak_cm + "cm";
+      (hasCurve(r) ? "<br>Typical peak: " + r.typical_peak_cm + "cm" : "<br>Live data only");
 
     var tipRect = mapTip.getBoundingClientRect(); // opacity:0 still lays out, so this reflects real content size
     var pos = computeTooltipPosition(e.clientX, e.clientY, tipRect.width, tipRect.height, window.innerWidth, window.innerHeight, 14);
@@ -208,21 +353,63 @@
   }
   function hideMapTip(){ mapTip.classList.remove('visible'); }
 
+  function currentCtx(){
+    return { mode: state.mode, zoom: map.getZoom(), regions: state.regions, tiers: state.tiers,
+      query: state.query, selectedId: state.selectedId };
+  }
+
+  // Set by renderMarkers(), read by renderStatus(): how many resorts pass the
+  // filters but are held back only because their size tier isn't revealed yet.
+  var zoomHeldBack = 0;
+
   function renderMarkers(){
+    var ctx = currentCtx();
+    var cold = cssVar('--temp-cold'), mid = cssVar('--temp-mid'), warm = cssVar('--temp-warm');
+    var surface = cssVar('--surface'), faint = cssVar('--ink-3');
+    zoomHeldBack = 0;
+
     DATA.resorts.forEach(function(r){
-      var disp = getDisplay(r);
       var m = markerEls[r.id];
-      var radius = depthToRadius(disp.depth);
-      var color = tempToColor(disp.temp, cssVar('--temp-cold'), cssVar('--temp-mid'), cssVar('--temp-warm'));
-      if(disp.depth <= 0.05){
-        m.setStyle({ radius: radius, color: color, weight: 2.2, fillOpacity: 0 });
-      } else {
-        m.setStyle({ radius: radius, color: cssVar('--surface'), weight: 1.6, fillColor: color, fillOpacity: 1 });
+      var cls = classifyResort(r, ctx);
+      var before = classes[r.id];
+      classes[r.id] = cls;
+
+      if(cls === 'hidden'){
+        if(markerLayer.hasLayer(m)) markerLayer.removeLayer(m);
+        if(isEligible(r, ctx.mode) && passesFilters(r, ctx)) zoomHeldBack++;
+        return;
       }
-      var el = m.getElement();
+      if(!markerLayer.hasLayer(m)) markerLayer.addLayer(m);
+      var el = wireMarkerElement(m, r);
+
+      if(cls === 'dim'){
+        m.setStyle({ radius: 3, color: faint, weight: 1, opacity: 0.55, fillColor: faint, fillOpacity: 0.4 });
+        if(el){
+          el.classList.add('marker-dim');
+          el.removeAttribute('tabindex');
+          el.setAttribute('aria-hidden', 'true');
+          el.removeAttribute('aria-label');
+        }
+        return;
+      }
+
+      var disp = getDisplay(r);
+      var radius = depthToRadius(disp.depth);
+      var color = tempToColor(disp.temp, cold, mid, warm);
+      if(disp.depth <= 0.05){
+        m.setStyle({ radius: radius, color: color, weight: 2.2, opacity: 1, fillOpacity: 0 });
+      } else {
+        m.setStyle({ radius: radius, color: surface, weight: 1.6, opacity: 1, fillColor: color, fillOpacity: 1 });
+      }
       if(el){
+        el.classList.remove('marker-dim');
+        el.setAttribute('tabindex', '0');
+        el.removeAttribute('aria-hidden');
         el.setAttribute('aria-label', r.name + ", " + r.region + ", " + Math.round(disp.depth) + " centimeters, " + disp.temp.toFixed(0) + " degrees");
       }
+      // Faint dots are drawn under the real markers: lift a marker the
+      // moment it becomes active, not on every redraw (each is a DOM move).
+      if(before !== 'active') m.bringToFront();
     });
   }
 
@@ -265,10 +452,16 @@
   }
 
   // ---- list ----
+  // Every resort gets a row up front (~480 small nodes); which ones are
+  // visible is decided by renderList() toggling `hidden`, so filtering never
+  // rebuilds DOM.
   var listEl = document.getElementById('resort-list');
   var byRegion = {};
-  DATA.resorts.forEach(function(r){ (byRegion[r.region] = byRegion[r.region]||[]).push(r); });
+  // largest first within each region
+  DATA.resorts.slice().sort(function(a, b){ return (b.run_km || 0) - (a.run_km || 0); })
+    .forEach(function(r){ (byRegion[r.region] = byRegion[r.region]||[]).push(r); });
   var rowEls = {};
+  var groupEls = {};
   REGION_ORDER.forEach(function(region){
     var items = byRegion[region] || [];
     if(!items.length) return;
@@ -281,12 +474,16 @@
     dot.style.background = 'var(' + REGION_VAR[region] + ')';
     heading.appendChild(dot);
     heading.appendChild(document.createTextNode(region));
+    var headCount = document.createElement('span');
+    headCount.className = 'head-count';
+    heading.appendChild(headCount);
     group.appendChild(heading);
+    groupEls[region] = { root: group, count: headCount };
     items.forEach(function(r){
       var row = document.createElement('button');
       row.className = 'resort-row';
       row.type = 'button';
-      row.addEventListener('click', function(){ select(r.id); });
+      row.addEventListener('click', function(){ selectFromList(r); });
 
       // Built once per resort; renderList() below only ever updates these
       // nodes' textContent, never rebuilds them, so resort data can't
@@ -307,15 +504,160 @@
     listEl.appendChild(group);
   });
 
+  var listedCount = 0;
+
   function renderList(){
+    var ctx = currentCtx();
+    var inView = map.getBounds();
+    var searching = state.query.trim() !== '';
+    var perRegion = {};
+    listedCount = 0;
+
     DATA.resorts.forEach(function(r){
-      var disp = getDisplay(r);
       var refs = rowEls[r.id];
-      var whenLabel = state.mode === 'live' ? 'now' : fmtDate(DATES[state.dayIndex]);
+      var matchesSearch = searching && matchesQuery(r, state.query);
+      var listed = isListed(classes[r.id], passesFilters(r, ctx), matchesSearch, inView.contains([r.lat, r.lon]), state.mapOnly);
+      refs.root.hidden = !listed;
+      if(!listed) return;
+
+      listedCount++;
+      perRegion[r.region] = (perRegion[r.region] || 0) + 1;
+      var disp = getDisplay(r);
+      var whenLabel = (state.mode === 'live' || !hasCurve(r)) ? 'now' : fmtDate(DATES[state.dayIndex]);
       refs.live.textContent = Math.round(disp.depth) + 'cm ' + whenLabel;
-      refs.peak.textContent = r.typical_peak_cm + 'cm peak';
-      refs.elev.textContent = r.elevation_top_m + 'm · ' + disp.temp.toFixed(0) + '°C';
+      refs.peak.textContent = hasCurve(r) ? r.typical_peak_cm + 'cm peak' : '';
+      var place = r.prefecture && r.prefecture !== r.region ? r.prefecture + ' · ' : '';
+      refs.elev.textContent = place + fmtElevation(r) + ' · ' + disp.temp.toFixed(0) + '°C';
     });
+
+    Object.keys(groupEls).forEach(function(region){
+      var n = perRegion[region] || 0;
+      groupEls[region].root.hidden = n === 0;
+      groupEls[region].count.textContent = n ? ' · ' + n : '';
+    });
+  }
+
+  // ---- filters: search, region chips, size chips, map-view toggle ----
+  var searchEl = document.getElementById('resort-search');
+  var regionChipsEl = document.getElementById('region-chips');
+  var tierChipsEl = document.getElementById('tier-chips');
+  var mapOnlyEl = document.getElementById('map-only');
+  var clearEl = document.getElementById('clear-filters');
+  var statusEl = document.getElementById('filter-status');
+  var regionChips = {}, tierChips = {};
+
+  var TIER_LABEL = { major: 'Major', medium: 'Medium', small: 'Small' };
+  var TIER_HINT = {
+    major: 'Major: 20+ km of downhill runs, plus every hand-picked resort. Always on the map, with a typical-season pattern.',
+    medium: 'Medium: 8-20 km of runs. Appears on the map from zoom level ' + TIER_MIN_ZOOM.medium + '. Live data only.',
+    small: 'Small: under 8 km of runs. Appears on the map from zoom level ' + TIER_MIN_ZOOM.small + '. Live data only.'
+  };
+
+  function makeChip(container, label, dotVar, onClick){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.setAttribute('aria-pressed', 'false');
+    if(dotVar){
+      var dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = 'var(' + dotVar + ')';
+      b.appendChild(dot);
+    }
+    b.appendChild(document.createTextNode(label));
+    var count = document.createElement('span');
+    count.className = 'chip-count';
+    b.appendChild(count);
+    b.addEventListener('click', onClick);
+    container.appendChild(b);
+    return { root: b, count: count };
+  }
+
+  REGION_ORDER.forEach(function(region){
+    regionChips[region] = makeChip(regionChipsEl, region, REGION_VAR[region], function(){ toggleRegion(region); });
+  });
+  TIER_ORDER.forEach(function(tier){
+    tierChips[tier] = makeChip(tierChipsEl, TIER_LABEL[tier], null, function(){ toggleTier(tier); });
+    tierChips[tier].root.title = TIER_HINT[tier];
+  });
+
+  function resortsInRegions(regions){
+    return DATA.resorts.filter(function(r){ return regions.indexOf(r.region) !== -1 && isEligible(r, state.mode); });
+  }
+
+  function fitTo(resorts){
+    if(!resorts.length) return;
+    map.fitBounds(L.latLngBounds(resorts.map(function(r){ return [r.lat, r.lon]; })), { padding: [28, 28], maxZoom: 10 });
+  }
+
+  function toggleRegion(region){
+    var i = state.regions.indexOf(region);
+    var next = state.regions.slice();
+    if(i === -1) next.push(region); else next.splice(i, 1);
+    setState({ regions: next });
+    if(next.length) fitTo(resortsInRegions(next)); else fitOverview();
+  }
+
+  function toggleTier(tier){
+    var i = state.tiers.indexOf(tier);
+    var next = state.tiers.slice();
+    if(i === -1) next.push(tier);
+    else if(next.length > 1) next.splice(i, 1); // never leave the map with no size at all
+    else return;
+    setState({ tiers: next });
+  }
+
+  searchEl.addEventListener('input', function(){ setState({ query: searchEl.value }); });
+  // Enter zooms the map to whatever the search matched.
+  searchEl.addEventListener('keydown', function(e){
+    if(e.key !== 'Enter') return;
+    e.preventDefault();
+    fitTo(DATA.resorts.filter(function(r){
+      return isEligible(r, state.mode) && passesFilters(r, currentCtx());
+    }));
+  });
+  mapOnlyEl.addEventListener('change', function(){ setState({ mapOnly: mapOnlyEl.checked }); });
+  clearEl.addEventListener('click', function(){
+    searchEl.value = '';
+    setState({ regions: [], tiers: TIER_ORDER.slice(), query: '' });
+    fitOverview();
+  });
+
+  function filtersActive(){
+    return state.regions.length > 0 || state.query.trim() !== '' || state.tiers.length < TIER_ORDER.length;
+  }
+
+  function renderFilters(){
+    REGION_ORDER.forEach(function(region){
+      var on = state.regions.indexOf(region) !== -1;
+      regionChips[region].root.classList.toggle('is-active', on);
+      regionChips[region].root.setAttribute('aria-pressed', on);
+      regionChips[region].count.textContent = DATA.resorts.filter(function(r){
+        return r.region === region && isEligible(r, state.mode);
+      }).length;
+    });
+    TIER_ORDER.forEach(function(tier){
+      var on = state.tiers.indexOf(tier) !== -1;
+      tierChips[tier].root.classList.toggle('is-active', on);
+      tierChips[tier].root.setAttribute('aria-pressed', on);
+      tierChips[tier].count.textContent = DATA.resorts.filter(function(r){
+        return r.tier === tier && isEligible(r, state.mode);
+      }).length;
+    });
+    clearEl.hidden = !filtersActive();
+  }
+
+  function renderStatus(){
+    var eligible = DATA.resorts.filter(function(r){ return isEligible(r, state.mode); }).length;
+    var parts = ['Showing ' + listedCount + ' of ' + eligible + ' resorts'];
+    if(zoomHeldBack > 0){
+      parts.push(zoomHeldBack + ' smaller ' + (zoomHeldBack === 1 ? 'resort appears' : 'resorts appear') + ' as you zoom in');
+    }
+    var liveOnly = DATA.resorts.length - eligible;
+    if(liveOnly > 0){
+      parts.push(liveOnly + ' live-only resorts are hidden in Typical season mode; switch to Live now to see them');
+    }
+    statusEl.textContent = parts.join(' · ');
   }
 
   // ---- detail / chart ----
@@ -334,8 +676,10 @@
           '<div class="stat"><div class="k" id="d-temp-k">Temp</div><div class="v" id="d-temp"></div></div>' +
           '<div class="stat"><div class="k">Typical peak</div><div class="v" id="d-peak"></div></div>' +
           '<div class="stat"><div class="k">Top elevation</div><div class="v" id="d-elev"></div></div>' +
+          '<div class="stat" id="d-runs-stat"><div class="k">Downhill runs</div><div class="v" id="d-runs"></div></div>' +
         '</div>' +
       '</div>' +
+      '<p class="detail-note" id="d-nocurve" hidden>Live conditions only. This resort has no typical-season pattern yet; those exist for the larger resorts.</p>' +
       '<div class="chart-wrap" style="position:relative;">' +
         '<svg id="chart-svg" class="chart-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + CHART_W + ' ' + CHART_H + '" role="img" aria-labelledby="chart-desc"></svg>' +
         '<div class="chart-tooltip" id="chart-tooltip"></div>' +
@@ -500,16 +844,27 @@
 
   function renderDetail(r){
     var disp = getDisplay(r);
+    var curved = hasCurve(r);
+    var liveView = state.mode === 'live' || !curved;
     document.getElementById('d-name').textContent = r.name;
-    document.getElementById('d-region').textContent = r.region;
+    document.getElementById('d-region').textContent =
+      r.prefecture && r.prefecture !== r.region ? r.prefecture + ' · ' + r.region : r.region;
     document.getElementById('d-badge').querySelector('.dot').style.background = regionColor(r.region);
-    document.getElementById('d-snow-k').textContent = state.mode === 'live' ? 'Live snow' : 'Snow, ' + fmtDate(DATES[state.dayIndex]);
-    document.getElementById('d-temp-k').textContent = state.mode === 'live' ? 'Live temp' : 'Temp, ' + fmtDate(DATES[state.dayIndex]);
+    document.getElementById('d-snow-k').textContent = liveView ? 'Live snow' : 'Snow, ' + fmtDate(DATES[state.dayIndex]);
+    document.getElementById('d-temp-k').textContent = liveView ? 'Live temp' : 'Temp, ' + fmtDate(DATES[state.dayIndex]);
     document.getElementById('d-live').textContent = Math.round(disp.depth) + "cm";
     document.getElementById('d-live').classList.toggle('muted', disp.depth === 0);
     document.getElementById('d-temp').textContent = disp.temp.toFixed(0) + "°C";
-    document.getElementById('d-peak').textContent = r.typical_peak_cm + "cm";
-    document.getElementById('d-elev').textContent = r.elevation_top_m + "m";
+    document.getElementById('d-peak').textContent = curved ? r.typical_peak_cm + "cm" : "—";
+    document.getElementById('d-elev').textContent = fmtElevation(r);
+    document.getElementById('d-runs-stat').hidden = !r.run_km;
+    document.getElementById('d-runs').textContent = r.run_km ? r.run_km + " km" : "";
+
+    document.getElementById('d-nocurve').hidden = curved;
+    detailCard.querySelector('.chart-wrap').hidden = !curved;
+    document.getElementById('chart-desc').hidden = !curved;
+    detailCard.querySelector('details.figures').hidden = !curved;
+    if(!curved) return;
 
     renderChart(r);
     renderFigures(r);
@@ -528,6 +883,27 @@
 
   function select(id){
     setState({ selectedId: id });
+    revealRowInList(id);
+  }
+
+  // Row click: select, and bring the resort into view if it isn't (a search
+  // match can be anywhere; a small resort may also be below its reveal zoom).
+  function selectFromList(r){
+    select(r.id);
+    var needZoom = TIER_MIN_ZOOM[r.tier] || 0;
+    if(!map.getBounds().contains([r.lat, r.lon]) || map.getZoom() < needZoom){
+      map.setView([r.lat, r.lon], Math.max(map.getZoom(), needZoom));
+    }
+  }
+
+  // Scroll the list's own container, never the page: scrollIntoView would
+  // also scroll the window if the list card were partly off-screen.
+  function revealRowInList(id){
+    var refs = rowEls[id];
+    if(!refs || refs.root.hidden) return;
+    var lr = listEl.getBoundingClientRect(), rr = refs.root.getBoundingClientRect();
+    if(rr.top < lr.top) listEl.scrollTop -= (lr.top - rr.top);
+    else if(rr.bottom > lr.bottom) listEl.scrollTop += (rr.bottom - lr.bottom);
   }
 
   function updateSelectionHighlight(){
@@ -538,15 +914,25 @@
     Object.keys(rowEls).forEach(function(k){ rowEls[k].root.classList.toggle('is-selected', k===state.selectedId); });
   }
 
-  function refreshAll(){
+  // The part of a refresh that depends on the map view (zoom/pan), split out
+  // so panning doesn't also redraw the detail chart.
+  function refreshMapView(){
     renderMarkers();
     renderList();
-    renderSizeLegend();
+    renderFilters();
+    renderStatus();
     updateSelectionHighlight();
+    scheduleLiveRefresh();
+  }
+
+  function refreshAll(){
+    refreshMapView();
+    renderSizeLegend();
     var r = DATA.resorts.filter(function(x){ return x.id === state.selectedId; })[0];
     if(r) renderDetail(r);
     updateDateLabel();
   }
+  map.on('moveend', refreshMapView);
 
   function updateDateLabel(){
     var lbl = fmtDate(DATES[state.dayIndex]);
@@ -578,10 +964,11 @@
     setState({ dayIndex: parseInt(slider.value, 10) });
   });
 
+  document.getElementById('resort-count').textContent = DATA.resorts.length;
+
   slider.value = PEAK_INDEX;
   setMode('season');
   select("niseko");
-  fetchLiveConditions();
 
   // ---- resort-list height, matched to the map card ----
   // Neither card has an externally imposed height for a CSS-only "shrink to
@@ -607,6 +994,10 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { hexToRgb: hexToRgb, lerpColor: lerpColor, tempToColor: tempToColor,
       depthToRadius: depthToRadius, fmtDate: fmtDate, fmtFetched: fmtFetched,
-      computeTooltipPosition: computeTooltipPosition };
+      computeTooltipPosition: computeTooltipPosition,
+      hasCurve: hasCurve, fmtElevation: fmtElevation, escapeHtml: escapeHtml,
+      isTierRevealed: isTierRevealed, matchesQuery: matchesQuery, passesFilters: passesFilters,
+      isEligible: isEligible, classifyResort: classifyResort, isListed: isListed,
+      REGION_ORDER: REGION_ORDER, TIER_ORDER: TIER_ORDER, TIER_MIN_ZOOM: TIER_MIN_ZOOM };
   }
 })();

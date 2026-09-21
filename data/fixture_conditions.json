@@ -1,105 +1,2390 @@
 {
-  "fetched_at": "2026-09-19T02:15",
+  "fetched_at": "2026-09-19T17:15",
   "conditions": {
     "niseko": {
       "snow_depth_cm": 0.0,
-      "temperature_c": 12.6,
-      "weather_code": 3
+      "temperature_c": 18.5,
+      "weather_code": 1
     },
     "rusutsu": {
       "snow_depth_cm": 0.0,
-      "temperature_c": 10.5,
+      "temperature_c": 16.6,
       "weather_code": 3
     },
     "furano": {
       "snow_depth_cm": 0.0,
-      "temperature_c": 11.9,
-      "weather_code": 3
+      "temperature_c": 18.1,
+      "weather_code": 2
     },
     "kiroro": {
       "snow_depth_cm": 0.0,
-      "temperature_c": 13.2,
-      "weather_code": 3
+      "temperature_c": 16.7,
+      "weather_code": 2
     },
     "sapporo_teine": {
       "snow_depth_cm": 0.0,
-      "temperature_c": 15.2,
-      "weather_code": 3
+      "temperature_c": 17.6,
+      "weather_code": 2
     },
     "asahidake": {
       "snow_depth_cm": 0.0,
-      "temperature_c": 2.0,
+      "temperature_c": 9.0,
       "weather_code": 3
     },
     "zao": {
       "snow_depth_cm": 0.0,
-      "temperature_c": 11.7,
+      "temperature_c": 14.6,
       "weather_code": 3
     },
     "appi": {
       "snow_depth_cm": 0.0,
-      "temperature_c": 14.1,
-      "weather_code": 51
+      "temperature_c": 16.2,
+      "weather_code": 3
     },
     "geto": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.8,
+      "weather_code": 2
+    },
+    "hakkoda": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 12.9,
+      "weather_code": 3
+    },
+    "nozawa": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.1,
+      "weather_code": 3
+    },
+    "hakuba_happo": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.0,
+      "weather_code": 3
+    },
+    "hakuba_cortina": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.9,
+      "weather_code": 3
+    },
+    "shiga_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 12.7,
+      "weather_code": 3
+    },
+    "myoko": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.1,
+      "weather_code": 3
+    },
+    "naeba": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.0,
+      "weather_code": 3
+    },
+    "gala_yuzawa": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.8,
+      "weather_code": 3
+    },
+    "madarao": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.6,
+      "weather_code": 3
+    },
+    "tazawako": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.2,
+      "weather_code": 1
+    },
+    "kagura": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.9,
+      "weather_code": 3
+    },
+    "tsugaike_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.0,
+      "weather_code": 3
+    },
+    "takasu_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.1,
+      "weather_code": 53
+    },
+    "sahoro": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 12.9,
+      "weather_code": 3
+    },
+    "hoshino_resorts_nekoma_mountain": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.5,
+      "weather_code": 3
+    },
+    "joetsu_international": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.1,
+      "weather_code": 3
+    },
+    "tomamu_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.2,
+      "weather_code": 2
+    },
+    "hakuba_iwatake": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.9,
+      "weather_code": 2
+    },
+    "aomori_spring_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.2,
+      "weather_code": 1
+    },
+    "kamui_ski_links": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.3,
+      "weather_code": 3
+    },
+    "ontake_2240": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.2,
+      "weather_code": 3
+    },
+    "maiko_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.7,
+      "weather_code": 3
+    },
+    "shizukuishi_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.5,
+      "weather_code": 2
+    },
+    "sugadairakogen_pine_beak_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.5,
+      "weather_code": 3
+    },
+    "tashiro_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.5,
+      "weather_code": 3
+    },
+    "palcall_tsumagoi_resort_ski_hotel": {
       "snow_depth_cm": 0.0,
       "temperature_c": 13.9,
       "weather_code": 3
     },
-    "hakkoda": {
+    "togakushi_ski_area": {
       "snow_depth_cm": 0.0,
-      "temperature_c": 11.9,
-      "weather_code": 51
-    },
-    "nozawa": {
-      "snow_depth_cm": 0.0,
-      "temperature_c": 19.3,
-      "weather_code": 1
-    },
-    "hakuba_happo": {
-      "snow_depth_cm": 0.0,
-      "temperature_c": 12.2,
-      "weather_code": 1
-    },
-    "hakuba_cortina": {
-      "snow_depth_cm": 0.0,
-      "temperature_c": 15.5,
-      "weather_code": 1
-    },
-    "shiga_kogen": {
-      "snow_depth_cm": 0.0,
-      "temperature_c": 10.8,
-      "weather_code": 1
-    },
-    "myoko": {
-      "snow_depth_cm": 0.0,
-      "temperature_c": 19.9,
-      "weather_code": 1
-    },
-    "naeba": {
-      "snow_depth_cm": 0.0,
-      "temperature_c": 14.9,
-      "weather_code": 1
-    },
-    "gala_yuzawa": {
-      "snow_depth_cm": 0.0,
-      "temperature_c": 20.9,
-      "weather_code": 1
-    },
-    "madarao": {
-      "snow_depth_cm": 0.0,
-      "temperature_c": 18.0,
+      "temperature_c": 16.5,
       "weather_code": 2
     },
-    "tazawako": {
+    "ishiuchi_maruyama_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.4,
+      "weather_code": 3
+    },
+    "mizuho_highland": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.0,
+      "weather_code": 51
+    },
+    "hakodate_nanae_snowpark": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.3,
+      "weather_code": 2
+    },
+    "inawashiro_snow_paradise": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.0,
+      "weather_code": 3
+    },
+    "ikenotaira_onsen_alpen_blick_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.6,
+      "weather_code": 2
+    },
+    "blue_resort_norikura": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.9,
+      "weather_code": 2
+    },
+    "miyagi_zao_eboshi_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.6,
+      "weather_code": 3
+    },
+    "arai_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.1,
+      "weather_code": 3
+    },
+    "akakura_onsen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.7,
+      "weather_code": 2
+    },
+    "grandeco_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.0,
+      "weather_code": 3
+    },
+    "hakuba_47": {
       "snow_depth_cm": 0.0,
       "temperature_c": 19.2,
       "weather_code": 3
     },
-    "kagura": {
+    "meiho_ski_resort": {
       "snow_depth_cm": 0.0,
-      "temperature_c": 13.8,
+      "temperature_c": 19.7,
       "weather_code": 2
+    },
+    "sugadaira_kogen_davos_hill_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.0,
+      "weather_code": 3
+    },
+    "ryuoo_ski_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.9,
+      "weather_code": 3
+    },
+    "togari_onsen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.5,
+      "weather_code": 3
+    },
+    "dynaland_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.1,
+      "weather_code": 53
+    },
+    "hodaigi_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.0,
+      "weather_code": 3
+    },
+    "hida_nagareha_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.0,
+      "weather_code": 3
+    },
+    "sapporo_kokusai_skiing_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.9,
+      "weather_code": 3
+    },
+    "akakura_kanko_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.7,
+      "weather_code": 2
+    },
+    "kandatsu_kogen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.8,
+      "weather_code": 3
+    },
+    "mount_racey": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.7,
+      "weather_code": 3
+    },
+    "tainai_ski_and_snowboard_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.1,
+      "weather_code": 3
+    },
+    "grandee_hatoriko_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.1,
+      "weather_code": 51
+    },
+    "hakuba_norikura_onsen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.6,
+      "weather_code": 3
+    },
+    "muikamachi_hakkaisan": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.2,
+      "weather_code": 3
+    },
+    "winghills_shiratori_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.8,
+      "weather_code": 53
+    },
+    "tateyama_sanroku_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.0,
+      "weather_code": 3
+    },
+    "shirakaba_kogen_kokusai_ski": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.2,
+      "weather_code": 2
+    },
+    "tangram_madarao_ski_circus": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.1,
+      "weather_code": 3
+    },
+    "white_world_oze_iwakura": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.2,
+      "weather_code": 3
+    },
+    "aizu_kogen_takatsue_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.7,
+      "weather_code": 2
+    },
+    "itoigawa_seaside_valley_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.5,
+      "weather_code": 3
+    },
+    "sugadaira_taro_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.4,
+      "weather_code": 3
+    },
+    "hachimantai_resort_panorama_ski_are": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.9,
+      "weather_code": 3
+    },
+    "iwappara": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.7,
+      "weather_code": 3
+    },
+    "marunuma_kogen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.3,
+      "weather_code": 51
+    },
+    "pippu_ski_slopes": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.9,
+      "weather_code": 1
+    },
+    "geihoku_kokusai": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.0,
+      "weather_code": 3
+    },
+    "owani_onsen_ski_resort_international_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.9,
+      "weather_code": 1
+    },
+    "washigatake_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.2,
+      "weather_code": 2
+    },
+    "hakuba_goryu": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.6,
+      "weather_code": 2
+    },
+    "jeunesse_kurikoma_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.7,
+      "weather_code": 1
+    },
+    "oguna_hotaka_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.4,
+      "weather_code": 3
+    },
+    "osorakan_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.1,
+      "weather_code": 3
+    },
+    "sapporo_bankei_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.8,
+      "weather_code": 2
+    },
+    "yabuhara_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.9,
+      "weather_code": 3
+    },
+    "osm_812dcf8b": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.4,
+      "weather_code": 3
+    },
+    "charmant_hiuchi_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.8,
+      "weather_code": 3
+    },
+    "iwate_kogen_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.8,
+      "weather_code": 2
+    },
+    "mitsumata_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.0,
+      "weather_code": 3
+    },
+    "aizu_kogen_daikura_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.9,
+      "weather_code": 3
+    },
+    "blanche_takayama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.9,
+      "weather_code": 2
+    },
+    "kawaba_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.8,
+      "weather_code": 3
+    },
+    "numajiri_ski": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.1,
+      "weather_code": 3
+    },
+    "hakusan_senjo_onsen_seymour_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.9,
+      "weather_code": 3
+    },
+    "sapporo_moiwayama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.3,
+      "weather_code": 3
+    },
+    "honokidaira_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.2,
+      "weather_code": 2
+    },
+    "prince_hotels_and_resorts_karuizawa": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.5,
+      "weather_code": 2
+    },
+    "whitepia_takasu": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.9,
+      "weather_code": 2
+    },
+    "miyagi_zao_sumikawasu_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.9,
+      "weather_code": 3
+    },
+    "yamaboku_wild_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.7,
+      "weather_code": 3
+    },
+    "ani_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.7,
+      "weather_code": 1
+    },
+    "kashimayari_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.5,
+      "weather_code": 2
+    },
+    "tambara_ski_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.7,
+      "weather_code": 3
+    },
+    "iizuna_higashi_kogen_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.9,
+      "weather_code": 2
+    },
+    "kijimadaira_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.2,
+      "weather_code": 3
+    },
+    "shinshu_matsumoto_nomugitoge_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.1,
+      "weather_code": 3
+    },
+    "edelweiss_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.7,
+      "weather_code": 2
+    },
+    "amihari_onsen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.8,
+      "weather_code": 3
+    },
+    "kurohime_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.6,
+      "weather_code": 3
+    },
+    "echo_valley": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.0,
+      "weather_code": 2
+    },
+    "katashina_kogen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.8,
+      "weather_code": 3
+    },
+    "kisofukushima_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.2,
+      "weather_code": 3
+    },
+    "minakami_kogen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.2,
+      "weather_code": 3
+    },
+    "kurobushi_kogen_snow_park_jangle_jungle": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.9,
+      "weather_code": 3
+    },
+    "aizu_kogen_takahata": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.0,
+      "weather_code": 3
+    },
+    "hachimantai_resort_shimokura_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.6,
+      "weather_code": 3
+    },
+    "minenohara_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.2,
+      "weather_code": 3
+    },
+    "yomase_onsen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.6,
+      "weather_code": 3
+    },
+    "kurumayama_kogen_skypark": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.6,
+      "weather_code": 2
+    },
+    "tengendai_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.5,
+      "weather_code": 3
+    },
+    "yuzawa_kogen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.0,
+      "weather_code": 3
+    },
+    "mikata_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.1,
+      "weather_code": 3
+    },
+    "minowa_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.1,
+      "weather_code": 3
+    },
+    "asarigawa_onsen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.6,
+      "weather_code": 2
+    },
+    "megahiraonsen_megahira_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.5,
+      "weather_code": 3
+    },
+    "niseko_moiwa_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.3,
+      "weather_code": 2
+    },
+    "okutadami_maruyama_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.8,
+      "weather_code": 3
+    },
+    "gransnow_okuibuki": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.9,
+      "weather_code": 2
+    },
+    "mt_t": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.9,
+      "weather_code": 3
+    },
+    "mia_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.9,
+      "weather_code": 3
+    },
+    "hachikogen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.0,
+      "weather_code": 3
+    },
+    "hida_funayama_snow_resort_arkopia": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.7,
+      "weather_code": 2
+    },
+    "shirakaba_2_in_1": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.0,
+      "weather_code": 2
+    },
+    "yuzawa_nakazato_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.8,
+      "weather_code": 3
+    },
+    "engaru_rock_valley": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.4,
+      "weather_code": 0
+    },
+    "makinoiri_kogen_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.0,
+      "weather_code": 3
+    },
+    "spring_valley_izumi_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.3,
+      "weather_code": 3
+    },
+    "aizukogen_nango_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.7,
+      "weather_code": 3
+    },
+    "new_greenpia_tsunan": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.3,
+      "weather_code": 3
+    },
+    "piyashiri_nayoro_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.0,
+      "weather_code": 0
+    },
+    "okunakayamakogen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.6,
+      "weather_code": 3
+    },
+    "sakae_club_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.7,
+      "weather_code": 3
+    },
+    "shirao_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.3,
+      "weather_code": 2
+    },
+    "snow_park_oze_tokura": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.0,
+      "weather_code": 3
+    },
+    "katashina_ogna_hotaka_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.0,
+      "weather_code": 3
+    },
+    "kazawa_snow_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.7,
+      "weather_code": 3
+    },
+    "imajo_365": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.1,
+      "weather_code": 3
+    },
+    "moya_hills": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.4,
+      "weather_code": 1
+    },
+    "muica_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.4,
+      "weather_code": 3
+    },
+    "kusatsu_onsen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.5,
+      "weather_code": 3
+    },
+    "suhara_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.6,
+      "weather_code": 3
+    },
+    "sun_meadows_kiyosato_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.2,
+      "weather_code": 2
+    },
+    "hakuba_sanosaka_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.4,
+      "weather_code": 2
+    },
+    "hidaka_kokusai": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.5,
+      "weather_code": 3
+    },
+    "jiigatake_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.0,
+      "weather_code": 2
+    },
+    "miyagi_zao_shiroishi_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.0,
+      "weather_code": 3
+    },
+    "norn_minakami": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.8,
+      "weather_code": 3
+    },
+    "okutone": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.4,
+      "weather_code": 3
+    },
+    "taiheizan_ski_area_opus": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.8,
+      "weather_code": 1
+    },
+    "chateraise_ski_valley_koumi": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.9,
+      "weather_code": 2
+    },
+    "kyowa_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.2,
+      "weather_code": 1
+    },
+    "pilatus_tateshina_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.1,
+      "weather_code": 2
+    },
+    "sanlaiva": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.1,
+      "weather_code": 3
+    },
+    "santa_present_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.1,
+      "weather_code": 3
+    },
+    "chateau_shiozawa_ski_area_yoshizato": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 25.3,
+      "weather_code": 3
+    },
+    "manza_onsen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 13.4,
+      "weather_code": 3
+    },
+    "yashima_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.0,
+      "weather_code": 1
+    },
+    "yuzawa_park_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.6,
+      "weather_code": 3
+    },
+    "shirakabako_royal_hill": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.7,
+      "weather_code": 2
+    },
+    "fujiten_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.5,
+      "weather_code": 3
+    },
+    "mikawa_onsen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.6,
+      "weather_code": 3
+    },
+    "biwako_valley": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.1,
+      "weather_code": 3
+    },
+    "hyper_bowl_tohachi": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.2,
+      "weather_code": 3
+    },
+    "onikobe_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.1,
+      "weather_code": 2
+    },
+    "iox_arosa": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.8,
+      "weather_code": 3
+    },
+    "mont_deus_hida_kuraiyama_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.5,
+      "weather_code": 2
+    },
+    "pirika_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.1,
+      "weather_code": 2
+    },
+    "fairy_land_kaneyama_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.5,
+      "weather_code": 3
+    },
+    "saku_ski_garden_parada": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.8,
+      "weather_code": 2
+    },
+    "nakasato_kiyotsu": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.6,
+      "weather_code": 3
+    },
+    "otaru_tenguyama_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.4,
+      "weather_code": 2
+    },
+    "ninox_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.1,
+      "weather_code": 3
+    },
+    "sky_valley_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.5,
+      "weather_code": 3
+    },
+    "takamine_mountain_park_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 13.2,
+      "weather_code": 3
+    },
+    "fujimi_panorama_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.9,
+      "weather_code": 2
+    },
+    "naspa_ski_garden": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.4,
+      "weather_code": 3
+    },
+    "sam_hakusan_ichirino_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.6,
+      "weather_code": 3
+    },
+    "yawata_highland_191_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.8,
+      "weather_code": 51
+    },
+    "chikusa_highland_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.1,
+      "weather_code": 51
+    },
+    "hachi_kita_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.9,
+      "weather_code": 3
+    },
+    "hida_takayama_municipal_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.4,
+      "weather_code": 2
+    },
+    "utopia_saioto": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.6,
+      "weather_code": 51
+    },
+    "yudonosan": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.1,
+      "weather_code": 2
+    },
+    "fukui_izumi_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.6,
+      "weather_code": 3
+    },
+    "greenpia_onuma": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.9,
+      "weather_code": 3
+    },
+    "kunimidaira": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.6,
+      "weather_code": 2
+    },
+    "miyagi_zao_shichikashuku": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.7,
+      "weather_code": 3
+    },
+    "wakasa_hyonosen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.1,
+      "weather_code": 3
+    },
+    "canmore_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.5,
+      "weather_code": 2
+    },
+    "hanamaki_namari_onsen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.1,
+      "weather_code": 2
+    },
+    "budoh_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.2,
+      "weather_code": 2
+    },
+    "fu_s_snow_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.3,
+      "weather_code": 1
+    },
+    "hirugano_kogen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.7,
+      "weather_code": 51
+    },
+    "kuzuryu_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.5,
+      "weather_code": 3
+    },
+    "abashiri_lake_view_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.4,
+      "weather_code": 1
+    },
+    "mashike_choei_shokanbetsudake_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.9,
+      "weather_code": 3
+    },
+    "yachiho_kogen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.3,
+      "weather_code": 2
+    },
+    "yogo_kogen_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.9,
+      "weather_code": 3
+    },
+    "kotobiki_forest_park_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.1,
+      "weather_code": 3
+    },
+    "yonezawa_snow_world": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.0,
+      "weather_code": 3
+    },
+    "hanawa_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.5,
+      "weather_code": 2
+    },
+    "itsukamachi_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 25.9,
+      "weather_code": 3
+    },
+    "kamoidake_kokusai": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.8,
+      "weather_code": 3
+    },
+    "osa_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.9,
+      "weather_code": 51
+    },
+    "ski_park_kanbiki": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.6,
+      "weather_code": 3
+    },
+    "zao_liza_world": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.1,
+      "weather_code": 3
+    },
+    "chateraise_ski_valley_nobeyama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.9,
+      "weather_code": 2
+    },
+    "memuro": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.5,
+      "weather_code": 3
+    },
+    "oudai": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.5,
+      "weather_code": 1
+    },
+    "tendo_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.0,
+      "weather_code": 3
+    },
+    "hirayu_onsen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.9,
+      "weather_code": 2
+    },
+    "northern_arc_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.5,
+      "weather_code": 1
+    },
+    "snow_resort_nekoyama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.9,
+      "weather_code": 51
+    },
+    "adatara_kogen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.8,
+      "weather_code": 3
+    },
+    "hakkai_sanroku_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 25.2,
+      "weather_code": 3
+    },
+    "hida_kawai_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.7,
+      "weather_code": 3
+    },
+    "asahi_shizenkan_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.9,
+      "weather_code": 3
+    },
+    "bibai_kokusetsu_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.4,
+      "weather_code": 3
+    },
+    "ohana_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.4,
+      "weather_code": 3
+    },
+    "fujiwara_snow_spa_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.7,
+      "weather_code": 3
+    },
+    "sannokura": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.5,
+      "weather_code": 3
+    },
+    "x_jam_takaifuji": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.7,
+      "weather_code": 3
+    },
+    "cupid_valley_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.5,
+      "weather_code": 3
+    },
+    "iwakisan_hyakuzawa_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.7,
+      "weather_code": 1
+    },
+    "kokusetsu_horotachi_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.0,
+      "weather_code": 2
+    },
+    "listel_ski_fantasia": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.4,
+      "weather_code": 3
+    },
+    "minami_furano": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.7,
+      "weather_code": 1
+    },
+    "st_mary": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.1,
+      "weather_code": 3
+    },
+    "family_snow_park_bandai_x2": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.4,
+      "weather_code": 3
+    },
+    "hagurosan_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.3,
+      "weather_code": 1
+    },
+    "hakodateyama_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.2,
+      "weather_code": 3
+    },
+    "hanagasa_kogen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.0,
+      "weather_code": 3
+    },
+    "ibukinosato_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.3,
+      "weather_code": 3
+    },
+    "ojiro_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.3,
+      "weather_code": 3
+    },
+    "shintokuyama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.6,
+      "weather_code": 3
+    },
+    "taira": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.8,
+      "weather_code": 3
+    },
+    "takanbo": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.2,
+      "weather_code": 3
+    },
+    "white_valley_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.3,
+      "weather_code": 3
+    },
+    "green_valley_kamuro_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.3,
+      "weather_code": 1
+    },
+    "iwanai_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.2,
+      "weather_code": 3
+    },
+    "karuizawa_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.6,
+      "weather_code": 3
+    },
+    "kyukamura_myoko": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.2,
+      "weather_code": 2
+    },
+    "snowcruse_onze": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.7,
+      "weather_code": 2
+    },
+    "urabandai_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.3,
+      "weather_code": 3
+    },
+    "wakamatsu_shimin_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.4,
+      "weather_code": 2
+    },
+    "katsurazawa_kokusetsu_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.7,
+      "weather_code": 3
+    },
+    "kitashiga_komaruyama_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.3,
+      "weather_code": 3
+    },
+    "nikko_yumoto_onsen_ski_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.7,
+      "weather_code": 51
+    },
+    "okudaisen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.7,
+      "weather_code": 53
+    },
+    "ishiuchi_hanaoka_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 25.1,
+      "weather_code": 3
+    },
+    "dynasty_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.8,
+      "weather_code": 3
+    },
+    "hyounosen_kokusai_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.4,
+      "weather_code": 3
+    },
+    "koide_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 25.6,
+      "weather_code": 3
+    },
+    "dogoyama_kougen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.9,
+      "weather_code": 51
+    },
+    "kuju_forest_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.1,
+      "weather_code": 3
+    },
+    "kuriko_international_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.7,
+      "weather_code": 3
+    },
+    "nayoro_piyashiri": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.7,
+      "weather_code": 0
+    },
+    "ski_resort_tenei": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.5,
+      "weather_code": 51
+    },
+    "akita_hachimantai_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.5,
+      "weather_code": 2
+    },
+    "hiruzen_bear_valley_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.6,
+      "weather_code": 51
+    },
+    "hokkaido_greenland_white_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.5,
+      "weather_code": 3
+    },
+    "izumigatake_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.7,
+      "weather_code": 3
+    },
+    "sol_fa_oda_ski_slopes": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.6,
+      "weather_code": 1
+    },
+    "tokamachi_city_matsudai": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.9,
+      "weather_code": 3
+    },
+    "fujiyama_snow_resort_yeti": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.2,
+      "weather_code": 3
+    },
+    "kamui_misaka_ski": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.2,
+      "weather_code": 2
+    },
+    "kokusetsu_akankohan": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.5,
+      "weather_code": 3
+    },
+    "tengamori_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.1,
+      "weather_code": 1
+    },
+    "yokomuki_onsen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.6,
+      "weather_code": 3
+    },
+    "awasuno_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.9,
+      "weather_code": 3
+    },
+    "nagaoka_city_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 26.0,
+      "weather_code": 3
+    },
+    "ookuradake_kogen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.1,
+      "weather_code": 3
+    },
+    "orofure_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.1,
+      "weather_code": 3
+    },
+    "tajima_farm_park_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.9,
+      "weather_code": 3
+    },
+    "consadole_niki_ski_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.0,
+      "weather_code": 2
+    },
+    "ikawa_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.9,
+      "weather_code": 3
+    },
+    "kanazawa_municipal_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.7,
+      "weather_code": 3
+    },
+    "uonuma_city_ohara": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.2,
+      "weather_code": 3
+    },
+    "chausuyama_kogen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.2,
+      "weather_code": 51
+    },
+    "haboro_chomin_skijo": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.0,
+      "weather_code": 0
+    },
+    "koshi_kogen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.5,
+      "weather_code": 3
+    },
+    "tonami_yumenotaira_ski_ground": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.7,
+      "weather_code": 3
+    },
+    "zao_sarukura": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.1,
+      "weather_code": 3
+    },
+    "akabane_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.9,
+      "weather_code": 1
+    },
+    "banshu_tokura_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.2,
+      "weather_code": 3
+    },
+    "kuma_ski_land": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.5,
+      "weather_code": 2
+    },
+    "yakumo_choei_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.5,
+      "weather_code": 2
+    },
+    "hiraya_kogen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.1,
+      "weather_code": 51
+    },
+    "kutsuki_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.3,
+      "weather_code": 3
+    },
+    "manba_okukan": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.8,
+      "weather_code": 3
+    },
+    "niyama_kogen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.4,
+      "weather_code": 3
+    },
+    "seki_onsen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.0,
+      "weather_code": 3
+    },
+    "tayama_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.6,
+      "weather_code": 3
+    },
+    "yakushi_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 25.8,
+      "weather_code": 3
+    },
+    "daisen_masumizu_kogen_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.5,
+      "weather_code": 53
+    },
+    "gokase_highland_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.7,
+      "weather_code": 1
+    },
+    "hakugindai_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.0,
+      "weather_code": 3
+    },
+    "doshojidaira_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.7,
+      "weather_code": 3
+    },
+    "mikasayama_esashi": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.7,
+      "weather_code": 1
+    },
+    "nishikawa_chomin": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.4,
+      "weather_code": 3
+    },
+    "tokusagamine_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.2,
+      "weather_code": 3
+    },
+    "chuo_do_ina_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.6,
+      "weather_code": 2
+    },
+    "daisetsuzan_sounkyo_kurodake_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 13.0,
+      "weather_code": 2
+    },
+    "family_gelande_kirigamine_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.0,
+      "weather_code": 2
+    },
+    "gujo_vacances_mura_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.8,
+      "weather_code": 51
+    },
+    "hijiri_kogen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.2,
+      "weather_code": 3
+    },
+    "ishizuchi_ski_snowbaord_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.4,
+      "weather_code": 3
+    },
+    "jibusaka_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.5,
+      "weather_code": 51
+    },
+    "nihonmatsu_shiozawa": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.8,
+      "weather_code": 3
+    },
+    "tenzan_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.7,
+      "weather_code": 3
+    },
+    "up_kannabe_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.4,
+      "weather_code": 3
+    },
+    "anpeizan_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.2,
+      "weather_code": 3
+    },
+    "asahi_prime_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.2,
+      "weather_code": 3
+    },
+    "asahi_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.0,
+      "weather_code": 0
+    },
+    "komagane_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.9,
+      "weather_code": 2
+    },
+    "nakazato_snow_wood_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.6,
+      "weather_code": 3
+    },
+    "bifuka_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.4,
+      "weather_code": 0
+    },
+    "ishikariheigen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.2,
+      "weather_code": 3
+    },
+    "wakkanaishi_komadori_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.7,
+      "weather_code": 0
+    },
+    "yanaizu_onsen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.0,
+      "weather_code": 3
+    },
+    "choei_yuda_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.8,
+      "weather_code": 1
+    },
+    "fujisato_choei_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.5,
+      "weather_code": 1
+    },
+    "otoineppu_otoifuji": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.5,
+      "weather_code": 1
+    },
+    "uenono_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.7,
+      "weather_code": 2
+    },
+    "akenogaoka_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.6,
+      "weather_code": 3
+    },
+    "akiyama_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.7,
+      "weather_code": 1
+    },
+    "ashimoi_kanko_takaho_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.0,
+      "weather_code": 3
+    },
+    "ski_board_resort_tsuguro_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.5,
+      "weather_code": 51
+    },
+    "tateshina_tokyu_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.1,
+      "weather_code": 2
+    },
+    "akan_royal_valley": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.9,
+      "weather_code": 3
+    },
+    "eniwa_city_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.3,
+      "weather_code": 3
+    },
+    "hunter_mountain_shiobara_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.2,
+      "weather_code": 2
+    },
+    "inakawa_ski_area_suberotta": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.2,
+      "weather_code": 1
+    },
+    "omagari_family_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.7,
+      "weather_code": 1
+    },
+    "yokone": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.7,
+      "weather_code": 3
+    },
+    "ani_yuguchinai_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.7,
+      "weather_code": 1
+    },
+    "asahigaoka_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.1,
+      "weather_code": 2
+    },
+    "boyodai_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.5,
+      "weather_code": 1
+    },
+    "gosannen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.8,
+      "weather_code": 1
+    },
+    "kaminokuni_chomin_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.3,
+      "weather_code": 3
+    },
+    "kiyosato_choei_midori_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.1,
+      "weather_code": 2
+    },
+    "muroran_shi_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.8,
+      "weather_code": 3
+    },
+    "sado_daira_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.8,
+      "weather_code": 1
+    },
+    "suttsu_town_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.2,
+      "weather_code": 3
+    },
+    "tadami_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.0,
+      "weather_code": 3
+    },
+    "yakurai_family": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.9,
+      "weather_code": 3
+    },
+    "azo_koen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.4,
+      "weather_code": 61
+    },
+    "bihoro_lily_yama_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.8,
+      "weather_code": 1
+    },
+    "daisen_white_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.9,
+      "weather_code": 55
+    },
+    "gionyama_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.3,
+      "weather_code": 1
+    },
+    "gozaisho_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.3,
+      "weather_code": 2
+    },
+    "onogawa_onsen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.9,
+      "weather_code": 3
+    },
+    "oze_hinoemata_onsen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.3,
+      "weather_code": 3
+    },
+    "tenoko_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.6,
+      "weather_code": 3
+    },
+    "chitose_shimin_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.1,
+      "weather_code": 3
+    },
+    "fuyudorigoe_ski_garden": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 26.4,
+      "weather_code": 3
+    },
+    "hachimoriyama_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.9,
+      "weather_code": 1
+    },
+    "higashimokoto_shirakabadai_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.6,
+      "weather_code": 1
+    },
+    "inosawa_sky_slopes": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.1,
+      "weather_code": 3
+    },
+    "kagamiganaru_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.5,
+      "weather_code": 53
+    },
+    "kanayasan_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.5,
+      "weather_code": 3
+    },
+    "koshimizu_chomin_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.7,
+      "weather_code": 1
+    },
+    "sarufutsu_sonei_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.2,
+      "weather_code": 0
+    },
+    "touma_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.8,
+      "weather_code": 2
+    },
+    "akoyama_skijo_snowpal": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.3,
+      "weather_code": 3
+    },
+    "assabu_chomin_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.1,
+      "weather_code": 2
+    },
+    "fujimigaoka_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.4,
+      "weather_code": 0
+    },
+    "funamidai_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.7,
+      "weather_code": 3
+    },
+    "furen_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.1,
+      "weather_code": 0
+    },
+    "habayama_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.3,
+      "weather_code": 1
+    },
+    "hinode": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.4,
+      "weather_code": 3
+    },
+    "hokuryu_choei_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.9,
+      "weather_code": 2
+    },
+    "kase_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.2,
+      "weather_code": 1
+    },
+    "kawanishi_choei_komatsu_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.9,
+      "weather_code": 3
+    },
+    "mishima_choei": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.0,
+      "weather_code": 3
+    },
+    "rokko_mountain": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.9,
+      "weather_code": 2
+    },
+    "akagisan_daiichi_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.3,
+      "weather_code": 53
+    },
+    "asahiyama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.5,
+      "weather_code": 2
+    },
+    "banshogahara": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.3,
+      "weather_code": 3
+    },
+    "dorogawa": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.2,
+      "weather_code": 2
+    },
+    "fujimi_kougen_snow_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.3,
+      "weather_code": 2
+    },
+    "garuru_takayanagi": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.8,
+      "weather_code": 3
+    },
+    "haginoyama_shimin_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.5,
+      "weather_code": 3
+    },
+    "hakusan_shiramine_onsen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.3,
+      "weather_code": 3
+    },
+    "hanamiyama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.1,
+      "weather_code": 3
+    },
+    "heavens_sonohara": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.4,
+      "weather_code": 51
+    },
+    "higashigaoka_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.8,
+      "weather_code": 0
+    },
+    "hiraniwa_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.6,
+      "weather_code": 3
+    },
+    "hirayama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.1,
+      "weather_code": 2
+    },
+    "hobetsu": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.6,
+      "weather_code": 2
+    },
+    "iizuna_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.4,
+      "weather_code": 2
+    },
+    "ikenotaira_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.4,
+      "weather_code": 2
+    },
+    "ippon_sugi_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.6,
+      "weather_code": 3
+    },
+    "kamafuseyama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.0,
+      "weather_code": 3
+    },
+    "kamihiruzen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.6,
+      "weather_code": 53
+    },
+    "kamikawa_choei_nakayama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.0,
+      "weather_code": 1
+    },
+    "kamiyubetsu_town_gokazan": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.9,
+      "weather_code": 0
+    },
+    "kanegasawa": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.2,
+      "weather_code": 3
+    },
+    "kenmin_no_mori_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.7,
+      "weather_code": 51
+    },
+    "kikonai_forest": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.3,
+      "weather_code": 3
+    },
+    "kokusetsu_shimukappu_central": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.5,
+      "weather_code": 1
+    },
+    "makado_onsen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.2,
+      "weather_code": 3
+    },
+    "makino_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.1,
+      "weather_code": 3
+    },
+    "manza_onsen_gunma": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.3,
+      "weather_code": 3
+    },
+    "matsumori_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.2,
+      "weather_code": 1
+    },
+    "matsunoyama_onsen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.6,
+      "weather_code": 3
+    },
+    "matsurube": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.5,
+      "weather_code": 2
+    },
+    "matsuyama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.2,
+      "weather_code": 1
+    },
+    "midorinodaichi_romannomori": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.0,
+      "weather_code": 3
+    },
+    "miinohara": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.9,
+      "weather_code": 51
+    },
+    "mineyama_kogen_resort_white_peak": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.2,
+      "weather_code": 3
+    },
+    "mominoki_forest_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.1,
+      "weather_code": 3
+    },
+    "monbetsu_city_oyama_monbetsu_city_oyama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.4,
+      "weather_code": 0
+    },
+    "motai_onsen_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.2,
+      "weather_code": 2
+    },
+    "mount_gassan_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.4,
+      "weather_code": 2
+    },
+    "mt_grand_view": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 24.7,
+      "weather_code": 3
+    },
+    "muroran_kogen_danpara": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.0,
+      "weather_code": 3
+    },
+    "naganuma": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.8,
+      "weather_code": 3
+    },
+    "nakafurano_hokusei": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.8,
+      "weather_code": 2
+    },
+    "nakatonbestucho_eikotobuki": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.0,
+      "weather_code": 0
+    },
+    "nakayamatoge": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 15.8,
+      "weather_code": 3
+    },
+    "nanao_korosa": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.7,
+      "weather_code": 2
+    },
+    "nasu_onsen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.5,
+      "weather_code": 3
+    },
+    "nipo_town": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.2,
+      "weather_code": 2
+    },
+    "nukabira_gensenkyo_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.5,
+      "weather_code": 3
+    },
+    "oketocho_minamigaoka": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.6,
+      "weather_code": 1
+    },
+    "okoppe_town": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.9,
+      "weather_code": 0
+    },
+    "okubo_grass": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.4,
+      "weather_code": 2
+    },
+    "onbara_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.3,
+      "weather_code": 55
+    },
+    "ringo_kyowakoku": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.2,
+      "weather_code": 3
+    },
+    "saroma_choei": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.0,
+      "weather_code": 0
+    },
+    "sayama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.9,
+      "weather_code": 51
+    },
+    "senjojiki": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 10.2,
+      "weather_code": 2
+    },
+    "shakotan_town": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.0,
+      "weather_code": 3
+    },
+    "sharicho_unabetsu": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.9,
+      "weather_code": 2
+    },
+    "shibetsu_choei_kanayama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.6,
+      "weather_code": 3
+    },
+    "shibetsu_city_hinata": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.1,
+      "weather_code": 0
+    },
+    "shichinohe_town": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.6,
+      "weather_code": 51
+    },
+    "shimokawacho": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.5,
+      "weather_code": 0
+    },
+    "shintotsukawacho_sotchidake": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.3,
+      "weather_code": 3
+    },
+    "shizuokashi_ribaweruikawa": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 16.1,
+      "weather_code": 2
+    },
+    "shokawa_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.0,
+      "weather_code": 2
+    },
+    "ski_jam_katsuyama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.2,
+      "weather_code": 3
+    },
+    "snova_shinyokohama": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.4,
+      "weather_code": 2
+    },
+    "snow_wave_park_shiratori_kogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.5,
+      "weather_code": 2
+    },
+    "soma_romantopia": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 21.7,
+      "weather_code": 1
+    },
+    "soyumura_229_ski_land": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.2,
+      "weather_code": 3
+    },
+    "suishozan": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.7,
+      "weather_code": 2
+    },
+    "taisei": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.7,
+      "weather_code": 2
+    },
+    "takino": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.8,
+      "weather_code": 3
+    },
+    "takinouecho_sakuragaoka": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.6,
+      "weather_code": 0
+    },
+    "tengukogen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.4,
+      "weather_code": 1
+    },
+    "teshio_chomin_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.1,
+      "weather_code": 0
+    },
+    "tochio": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 25.7,
+      "weather_code": 3
+    },
+    "towadako_onsen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 17.2,
+      "weather_code": 51
+    },
+    "toyotomi_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.8,
+      "weather_code": 0
+    },
+    "tsubetsu_townsmen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.2,
+      "weather_code": 2
+    },
+    "unazuki_onsen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.4,
+      "weather_code": 3
+    },
+    "ushidake_onsen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.4,
+      "weather_code": 3
+    },
+    "wajima_city_mitsui": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.8,
+      "weather_code": 1
+    },
+    "wakasu_kogen_oya": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.8,
+      "weather_code": 3
+    },
+    "wassamu_higashiyama_ski_resort": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 19.1,
+      "weather_code": 1
+    },
+    "windsor_snow_village": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 14.7,
+      "weather_code": 3
+    },
+    "wonder_valley_sado": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 23.5,
+      "weather_code": 1
+    },
+    "yakushiyama_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 22.2,
+      "weather_code": 1
+    },
+    "yamada_onsen_kids_snow_park": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.4,
+      "weather_code": 3
+    },
+    "yamagata_akakura_onsen": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 20.4,
+      "weather_code": 2
+    },
+    "yogoshiyama_ski_area": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 18.4,
+      "weather_code": 3
+    },
+    "yunomaru": {
+      "snow_depth_cm": 0.0,
+      "temperature_c": 13.9,
+      "weather_code": 3
     }
   }
 }
