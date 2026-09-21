@@ -293,9 +293,11 @@ only shown or hidden.
   markers quietly showing September's numbers. The status line says how many
   are hidden and why. Selecting one in Live mode and then switching still
   shows its detail card, with a note in place of the chart.
-- **Live refresh is lazy.** Open-Meteo's free tier is metered per location
-  (5,000/hour, 10,000/day), so refreshing all ~480 on every page load would
-  let a handful of reloads hit the limit. Instead the page refreshes only
+- **Live refresh is lazy.** Open-Meteo's free tier allows 600 calls/minute,
+  5,000/hour and 10,000/day per IP, and doesn't document whether a request
+  for 100 locations counts as one call or 100. If each location counts,
+  refreshing all ~480 on every page load would let a handful of reloads hit
+  the limit, so the page is built for that worse case: it refreshes only
   what is drawn and near the viewport, in batches of 100, once per resort per
   page view (a failed batch isn't retried, for the same reason). Measured:
   27 locations at load, ~110 the first time you zoom into a dense valley,

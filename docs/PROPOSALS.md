@@ -307,10 +307,15 @@ typing a resort's Japanese name finds nothing.
 **Licensing of the imported data.** OpenSkiMap's data is derived from
 OpenStreetMap and released under the ODbL, which has a share-alike condition
 for derived databases; the repo's MIT license covers the code, not that data.
-Attribution is in place (the map's attribution line and the README's data
-sources). Whether `data/resorts.json` / `ski_data.json` should be labelled as
-ODbL is worth a deliberate decision — I'm not a lawyer and haven't made it
-for you.
+Attribution now follows OpenSkiData's recommended wording (page footer and
+README): OpenSkiData / OpenSkiMap.org, © OpenStreetMap contributors (ODbL),
+Skimap.org, Who's On First, © Mapterhorn. (The first version credited only
+OpenStreetMap and OpenSkiMap; I haven't verified which of the other sources
+our particular fields come from, so the full list is the safe choice.)
+Still open, and yours to decide: labelling `data/resorts.json` and the files
+derived from it as ODbL. My reading, not legal advice: because the repo is
+public, publishing those files is public use of a derived database, so
+they'd need to be offered under the ODbL; the MIT code license is unaffected.
 
 **Tier thresholds and zoom levels are first guesses.** `MAJOR_MIN_KM = 20` and
 `MEDIUM_MIN_KM = 8` in `lib/openskimap_import.rb`, and `TIER_MIN_ZOOM`
@@ -320,11 +325,20 @@ notable land in `medium` and so have no typical-season curve: Ontake 2240
 Spring, Shizukuishi, Palcall Tsumagoi. Promoting one is a tier edit in
 `resorts.json` plus a tuning entry.
 
-**Live-refresh call budget.** Open-Meteo's free tier is metered per location
-(5,000/hour, 10,000/day). The page only refreshes what's on screen, once per
-resort per page view, which keeps a normal visit to a few hundred calls. If
-traffic grows, the daily-snapshot workflow (README, Next steps) would let
-browsers skip most of those calls.
+**Live-refresh call budget.** Open-Meteo's free tier allows 600/minute,
+5,000/hour and 10,000/day *per IP* (so each visitor has their own budget,
+except behind shared IPs). Whether a multi-location request counts as one call
+or one per location isn't documented anywhere I could read, and an earlier
+version of these docs wrongly stated the per-location reading as fact. The
+page is built for the worse case: it refreshes only what's on screen, once
+per resort per page view, ~30-140 locations per action. If it turns out to be
+one call per request, this is over-cautious but harmless. If traffic grows, or
+the site ever carries ads or subscriptions (which makes it "commercial" under
+Open-Meteo's terms and needs a paid plan), the daily-snapshot workflow
+(README, Next steps) would let browsers skip most of those calls. That
+workflow would run from GitHub's shared runner IPs, and Open-Meteo's creator
+has noted the per-IP limits are awkward for shared hosting, so it's worth
+testing before relying on it.
 
 **Smaller things.**
 - ~40 resorts have no known top elevation (OpenSkiMap has no run/lift data

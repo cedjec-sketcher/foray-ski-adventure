@@ -174,8 +174,10 @@ Then open <http://localhost:8000/index.html>.
 - Live snow depth and temperature: [Open-Meteo](https://open-meteo.com) —
   free for non-commercial use with attribution; see their
   [terms](https://open-meteo.com/en/terms) before any commercial use. The
-  free tier is metered per location, which is why the page only refreshes
-  the resorts currently on screen.
+  free tier allows 600 calls/minute, 5,000/hour and 10,000/day per IP.
+  Open-Meteo doesn't document whether a request for many locations counts as
+  one call or one per location, so the page assumes the worse case and only
+  refreshes the resorts currently on screen.
 - Resort names, locations, elevations and run lengths:
   [OpenSkiMap](https://openskimap.org) / [OpenSkiData](https://openskidata.org),
   derived from OpenStreetMap data © OpenStreetMap contributors, available

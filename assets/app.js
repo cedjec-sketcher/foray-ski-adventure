@@ -189,7 +189,7 @@
     if(DATA.live_fetch_ok === false) label = "SNAPSHOT (LIVE REFRESH FAILED)";
     else if(DATA.live_fetch_ok === 'partial') label = "PARTLY LIVE (SOME REFRESHES FAILED)";
     document.getElementById('fetch-meta').innerHTML =
-      label + "<br>" + fmtFetched(DATA.generated_at) + " JST<br>source: open-meteo.com";
+      label + "<br>" + fmtFetched(DATA.generated_at) + ' JST<br>source: <a href="https://open-meteo.com/">open-meteo.com</a>';
   }
   updateFetchMeta();
 
@@ -200,10 +200,12 @@
   // snapshot for anything that fails (offline, rate limit, API hiccup).
   //
   // Only resorts actually on screen are refreshed, in batches, and each at
-  // most once per page view. Open-Meteo's free tier is metered per location
-  // (5,000/hour), so refreshing all ~480 on every load would let a handful of
-  // reloads run into the limit. Failed batches are not retried within a page
-  // view, for the same reason.
+  // most once per page view. Open-Meteo's free tier allows 600 calls/minute,
+  // 5,000/hour and 10,000/day per IP, but doesn't document whether one
+  // request for 100 locations counts as 1 call or 100. So this is written for
+  // the worse case: refreshing all ~480 on every load could let a few reloads
+  // hit the limit if each location counts. Failed batches are not retried
+  // within a page view, for the same reason.
   var LIVE_BATCH = 100;
   var liveDone = {};      // id -> true once refreshed (or given up on)
   var liveInFlight = {};  // id -> true while a request covering it is pending

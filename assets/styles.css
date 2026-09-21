@@ -94,6 +94,7 @@ h1{
   max-width:46ch;
   margin:.35rem 0 0;
 }
+.fetch-meta a{color:inherit;}
 .fetch-meta{
   font-family:"IBM Plex Mono", ui-monospace, monospace;
   font-size:.72rem;
@@ -348,6 +349,10 @@ table.figures-table td:last-child, table.figures-table th:last-child{
   font-family:"IBM Plex Mono",monospace;text-align:right;padding-right:0;
   font-variant-numeric:tabular-nums;
 }
+
+.credits{font-size:.72rem;line-height:1.55;color:var(--ink-3);}
+.credits p{margin:0;max-width:90ch;}
+.credits a{color:var(--ink-2);}
 
 ::selection{background:var(--accent);color:var(--accent-ink);}
 a{color:var(--accent);}
