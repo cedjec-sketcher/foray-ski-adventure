@@ -236,3 +236,20 @@ backlog — flagged as a maintainability concern (see
 this file (the "— done" history, append-only), `ARCHITECTURE.md` (the
 system as it stands, unchanged by this split), and a slimmer
 `PROPOSALS.md` holding only what's still open.
+
+## UX
+
+**Added a viewport meta tag (2026-09-22).** The page had no
+`<meta name="viewport">` at all. Real mobile browsers fall back to
+assuming a ~980px-wide page and shrink the whole desktop layout to fit the
+physical screen, rather than using the real screen width for CSS — so the
+`@media (max-width: 860px)` single-column breakpoint never fired on an
+actual phone; the two-column desktop layout just rendered tiny instead.
+Found by the first run of the UX-specialist review (see
+[UX_FINDINGS.md](./UX_FINDINGS.md) for the workflow), and confirmed
+directly with a real mobile user agent at 375px width before fixing it:
+`window.innerWidth` read 980 and the grid stayed two-column (529px/391px)
+before, 378 and one column (358px) after. Manually narrowing a desktop
+browser window doesn't reproduce this — desktop browsers always use the
+real window width, which is why the bug went unnoticed despite the
+responsive CSS (chip wrapping, list height cap) already being in place.
