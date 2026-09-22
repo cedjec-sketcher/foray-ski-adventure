@@ -98,8 +98,8 @@ inlined in the page, since that's the one thing that has to travel with it.
 [Leaflet](https://leafletjs.com/) (loaded from cdnjs), which owns the map
 itself, while everything else — state, rendering, the chart — is plain
 DOM/SVG with no framework. There's one mutable `state` object
-(`{ mode, dayIndex, selectedId, regions, tiers, query, mapOnly }`), changed
-only through `setState(patch)`, and a `refreshAll()` function that
+(`{ mode, dayIndex, selectedId, regions, tiers, query, mapOnly, ranking }`),
+changed only through `setState(patch)`, and a `refreshAll()` function that
 re-derives all on-screen output from `state` + the embedded `DATA` + the
 map's current zoom and bounds:
 
@@ -108,7 +108,10 @@ map's current zoom and bounds:
 | `getDisplay(resort)` | Picks live vs. typical-season values for one resort based on `state.mode`/`state.dayIndex` |
 | `tempToColor(temp, coldHex, midHex, warmHex)` | Diverging color scale, temperature → hex/rgb |
 | `depthToRadius(depth)` | Area-proportional size scale, snow depth → marker radius |
-| `classifyResort(resort, ctx)` | Pure. Decides `'active'` / `'dim'` / `'hidden'` from mode, zoom, filters, search and selection (see "Showing ~480 resorts" below) |
+| `classifyResort(resort, ctx)` | Pure. Decides `'active'` / `'dim'` / `'hidden'` from mode, zoom, filters, search, selection and the active Top-10 ranking (see "Showing ~480 resorts" below) |
+| `rankResorts(resorts, ranking, n)` | Pure. Top-n ids by `altitude` or `snow`, ties broken deterministically |
+| `computeRanking()` / `isRankingReady(...)` | Recomputes the active ranking's ids from the current filters each refresh; `snow` waits until every candidate resort has been live-refreshed (or given up on) before ranking, so it's never a mix of fresh and stale depths |
+| `placeRankedRows()` | Moves the ranked rows into one flat, numbered list box, swapped back into their region groups when the ranking ends |
 | `renderMarkers()` | Adds/removes each `circleMarker` from a layer group by its class, and styles the visible ones via `setStyle()` |
 | `renderList()` | Shows/hides each resort's pre-built row with `hidden`, and updates the visible rows' child `<span>`s via `.textContent` |
 | `renderFilters()` / `renderStatus()` | Chip on/off state and counts; the "Showing N of M" line |
@@ -249,7 +252,7 @@ only shown or hidden.
   (Asahidake at -16°C still renders as exactly `rgb(47,131,224)`).
   `getDisplay` stays inside the guard — it closes over `state`/`DATES`,
   which only exist there — so it's still not test-reachable; see
-  PROPOSALS.md §3b.
+  PROPOSALS.md, "Testing gaps".
 - **The season curve is synthetic, not measured.** It exists to make the
   visualization meaningful during the off-season (when live depth is 0cm
   almost everywhere) and to preview what the size/color encoding looks like
@@ -311,6 +314,42 @@ only shown or hidden.
   restates it (`.resort-row[hidden]{display:none}`). Without that, "hidden"
   rows just stay on screen.
 
+### Top-10 lists (Highest altitude, Snowiest)
+
+- **A ranking is a filter, not a separate view.** Turning one on sets
+  `state.ranking`; `classifyResort` treats "in the ranked ids" the same way
+  it treats a search match — revealed at any zoom, dimmed rather than
+  hidden if some other filter would otherwise exclude it, and the selected
+  resort stays drawn even if the ranking would exclude it. Region/size
+  chips and search narrow the *candidate pool* a ranking is computed from
+  (a region chip plus "Snowiest" gives the top 10 in that region), rather
+  than being separate, competing modes.
+- **`snow` only ranks in Live mode**, since the typical-season numbers are
+  illustrative, not measured — ranking by them would present made-up
+  numbers as if they were a real "snowiest" fact. Leaving Live mode while a
+  snow ranking is active turns the ranking off rather than silently
+  switching what it's ranking by.
+- **A snow ranking waits for data, deliberately.** `isRankingReady` blocks
+  the ranking from showing anything until every candidate resort has
+  either been live-refreshed or its refresh has failed — a "top 10" that
+  reshuffled live as batches trickled in would be actively misleading
+  (today's #1 might just be the first resort to respond). This changes
+  what `refreshLiveConditions` fetches: normally only resorts on/near the
+  current map view, but with a snow ranking active it fetches every
+  eligible resort regardless of viewport, since the ranking needs all of
+  them to answer at all.
+- **Ties are real and broken deterministically**, not left to array order.
+  Open-Meteo's forecast model doesn't resolve individual mountains, so
+  neighbouring resorts frequently get identical depths; `rankResorts`
+  breaks a tie by elevation (for snow) or run length (for altitude), then
+  by id, so the same inputs always produce the same order and the 10th
+  place is never arbitrary.
+- **The ranked rows move, they don't just get badges.** A flat, numbered
+  list (`rankBox`) is spliced into the DOM in place of the region groups
+  while a ranking is active, and the rows themselves — not copies — move
+  into it, so click handlers and existing DOM identity survive; ending the
+  ranking moves them back to their original group.
+
 ## Known constraints (as of this snapshot)
 
 - Live conditions refresh client-side on GitHub Pages, but the "typical
@@ -337,10 +376,14 @@ only shown or hidden.
   `test/region_consistency_test.rb` checking that the Ruby importer,
   `app.js`, the CSS tokens and the real data all agree on the region list)
   and `node --test test/js` covers `assets/app.js`'s pure functions,
-  including all of the marker/list visibility logic. `.github/workflows/test.yml` runs both,
+  including all of the marker/list visibility logic and the Top-10 ranking
+  logic (`rankResorts`, `isRankingReady`, the ranking-aware paths through
+  `classifyResort`/`isListed`). `.github/workflows/test.yml` runs both,
   as separate jobs, on every push and pull request to `main`. Not covered:
   `getDisplay` (closes over
   DOM-guarded state) and anything that needs a real DOM — markers
   actually rendering, clicking one actually updating the detail panel, and
-  so on. That's still manual (or a future headless-browser smoke test, see
-  PROPOSALS.md §3b).
+  so on. `test/browser/` has real coverage for exactly that (it drives the
+  built page against a mocked winter — see `test/browser/ranking_check.js`
+  and `scripts/build_debug_page.rb`), but only runs manually today, not in
+  CI; see PROPOSALS.md, "Testing gaps" and "Structure & maintainability".
