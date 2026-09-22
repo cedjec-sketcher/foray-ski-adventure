@@ -1,353 +1,248 @@
 # Improvement proposals
 
-Companion to [ARCHITECTURE.md](./ARCHITECTURE.md), which describes the system
-as it stands. Started as an all-proposed wishlist; items get marked done in
-place as they land, so this doubles as a running log of what changed and why.
-Each section is ordered roughly quick-win-first.
+Only what's still open lives here. Two companion docs:
+[ARCHITECTURE.md](./ARCHITECTURE.md) describes the system as it stands, and
+[CHANGELOG.md](./CHANGELOG.md) has the "— done" history this file used to
+carry inline (split out 2026-09-22, once that history made the file too big
+to use as a quick "what's left" reference). When something below ships, move
+its write-up to `CHANGELOG.md` rather than marking it done in place.
 
-## 1. Code structure & quality
+## Testing gaps
 
-**Extraction — done.** `template.html` used to mix CSS, markup, and ~450
-lines of JS in a single inline `<script>`. It's now:
+Two things `rake test` / `node --test test/js` don't reach:
+
+- **DOM-touching code isn't unit-tested.** `getDisplay` closes over
+  `state`/`DATES`/`DATA`, which only exist inside `assets/app.js`'s
+  DOM-guarded section, so testing it means either injecting that state
+  explicitly (a real refactor, not just an export) or a DOM shim. Neither
+  has been done. More broadly, nothing verifies markers actually render,
+  clicking one actually updates the detail panel, or the mode toggle
+  actually disables the slider — `test/browser/*.js` does check exactly
+  these things by driving the real page, but only when run by hand; see
+  "Structure & maintainability" below for wiring it into CI, which would
+  close this gap too.
+- **No written manual/visual QA checklist.** Some things are impractical to
+  fully automate — color legibility in both light and dark mode, chart
+  label collisions, mobile layout. There's an informal checklist that's
+  been followed by hand repeatedly (screenshot + a few targeted
+  `getAttribute`/console checks against the known-correct formulas); it's
+  never been written down as a repeatable `docs/QA_CHECKLIST.md`, so it
+  depends on remembering to do it.
+
+## Forecast — a snow forecast view, and a forecast-based Top 10
+
+Proposed by the owner (2026-09-22), building on the Live/Typical season
+split and the Top-10 rankings: a third data mode showing what's *expected*,
+not just what's now or what's typical.
+
+**a) A snow forecast view.** Open-Meteo's forecast endpoint (the same one
+the live refresh already calls) has a free `daily=snowfall_sum` field, up
+to 16 days out — confirmed against the live API while writing this
+proposal, so this is buildable with no new data source:
 
 ```
-assets/
-  app.js          # extracted client JS — internals unchanged, just relocated
-  styles.css      # extracted CSS
-lib/
-  season_curve.rb # pure bell-curve / temperature-curve generation
-  providers/
-    open_meteo.rb # live-data fetch, isolated so it's the one thing that
-                   # can fail over the network (not yet a swappable
-                   # "pick a provider" interface — that's §2)
-scripts/
-  build_data.rb   # thin orchestrator: calls the two lib/ modules, writes outputs
+GET /v1/forecast?latitude=...&longitude=...&daily=snowfall_sum&forecast_days=10
 ```
 
-(`lib/projection.rb`, originally proposed here, never got built — the
-Leaflet migration in §2 removed the map-projection code entirely before this
-extraction happened, so there was nothing left to extract.)
+The natural home is a third mode alongside "Live now" / "Typical season" —
+call it "10-day forecast" — with the date slider replaced by a day picker
+(or kept, scrubbing the 10 forecast days instead of the illustrative
+season). Marker size would show forecast snowfall for the selected day (a
+rate, not the season's cumulative depth, so the color/size legend needs a
+forecast-mode label change). The detail chart gets a third series option:
+today's forecast sits oddly next to a fixed illustrative curve, so probably
+a separate small chart rather than a third line on the existing one.
 
-`index.html` now references `assets/app.js` and `assets/styles.css` by
-`<script src>`/`<link>` instead of inlining them — only the generated JSON
-stays inlined. The extraction itself was purely mechanical (`app.js`'s
-internals were byte-for-byte the same logic that lived in the inline
-`<script>` before), and left the three smaller issues below exactly as open
-as they'd been — they were fixed separately afterward, not by the move
-itself.
+**b) A Top-10 "most snow coming" list**, using `rankResorts`/`classifyResort`
+(same pattern as the two existing Top-10 lists), ranked by total forecast
+snowfall over the next N days (N=10 to match the title, but worth exposing
+as a parameter — a "next 3 days" view answers a different question than
+"next 10 days"). Depends on (a) existing, since the ranking needs the same
+per-resort daily series the view renders.
 
-**The three smaller issues — all done:**
+**Sizing this against the two rankings already shipped:**
 
-- `state` is now only ever changed through `setState(patch)`, which merges
-  the patch and always calls `refreshAll()` — "changed state but forgot to
-  re-render" isn't possible to write anymore. `select(id)` is now a one-line
-  wrapper (`setState({ selectedId: id })`); the slider handler is one line
-  too. `setMode` still directly updates the mode-toggle widget's own visual
-  state (active class, `aria-selected`, the slider's `disabled` flag) before
-  calling `setState` — that's the widget's own concern, not "does the DOM
-  match `state`," so it stayed colocated rather than being forced through
-  the same helper. Marker/row selection highlighting moved out of `select()`
-  into `refreshAll()` (via `updateSelectionHighlight()`), so it's now applied
-  consistently on every re-render instead of only when selection itself
-  changed — one unified place that makes the DOM match `state`, not two.
-- List rows no longer use string-concatenated `innerHTML`. Each row's four
-  child `<span>`s are created once, when the row itself is built;
-  `renderList()` only ever sets their `.textContent` afterward, the same
-  pattern `renderDetail()`/`buildDetailSkeleton()` already used for the
-  detail panel. No resort-sourced string ever reaches `innerHTML` now — a
-  missed closing tag or an HTML-special character in a resort name can't
-  break the layout. (`buildDetailSkeleton()`'s own `innerHTML` was left
-  alone: it's static markup built once, with no resort data interpolated
-  into it — CHART_W/CHART_H are the only interpolated values, both fixed
-  numeric constants — so it never carried the risk this was about.)
-- `test/theme_tokens_test.rb` now asserts the three `:root` blocks (bare,
-  `@media (prefers-color-scheme: dark)`, `[data-theme="dark"]`) declare the
-  exact same set of custom-property names — not their values, just that
-  nothing present in one is silently missing from another. Verified it
-  actually catches the failure mode it's meant to: deliberately dropped
-  `--temp-warm` from one block and confirmed the test fails with a clear
-  "missing: [...]" message naming the exact token and block, then restored
-  it. This is the build-time check proposed here, not the alternative
-  (generating all three from one source list) — cheaper to add, and it
-  would have caught the actual bug that happened.
+- **New network shape.** The live refresh fetches one `current` value per
+  resort; this needs a `daily` array of 10 values per resort. Same batching
+  approach (100 locations/request), but roughly 10x the response payload
+  per resort — worth checking real response sizes at ~480 resorts before
+  assuming batch-of-100 is still the right size.
+- **A forecast is not "on screen right now."** The existing rankings lean
+  on "only resorts currently visible or already fetched, once per page
+  view." A national "most snow coming" ranking needs a forecast for every
+  eligible resort the moment it's opened, the same shape of problem the
+  snow ranking already solved (`isRankingReady`), but for ~480 resorts on
+  first open rather than only the visible ones — call volume is closer to
+  the build script's than to the live-refresh's.
+- **Forecast skill decays with lead time.** A 10-day snow forecast is far
+  less reliable at day 9 than day 1, and worth saying so in the UI (a
+  confidence note, or shading later days differently) rather than
+  presenting all 10 days with equal weight.
+- **Same terrain-resolution caveat as live data** (documented in
+  DATA_LICENSE.md / README): Open-Meteo's model grid doesn't resolve
+  individual mountains, so neighbouring resorts can get near-identical
+  forecasts. This affects the Top-10's tie-breaking the same way the live
+  snow ranking already handles it.
+- **Off-season is genuinely different here.** The live/typical-season split
+  hides live-only resorts outside winter because the *values* are boring
+  (0cm), but the forecast is still meaningful in September — it would
+  correctly show near-zero forecast snowfall, not stale data. Worth
+  deciding whether "10-day forecast" mode should hide itself off-season
+  like Typical season implicitly does, or just show truthfully-small
+  numbers.
 
-One thing the extraction *did* resolve: `scripts/build_data.rb`'s network
-fetch and pure curve computation no longer sit in the same top-to-bottom
-script — `Providers::OpenMeteo#fetch` now raises a specific error on a
-malformed/mismatched response instead of failing obscurely partway through
-unrelated code. There's still no rescue/retry around it, but there's now an
-obvious, isolated place to add one.
+Not started. Medium-sized relative to the two shipped Top-10 lists: the
+ranking and UI patterns transfer directly, but the network shape (multi-day
+arrays, fetch-everything-up-front) is new.
 
-## 2. Flexibility — data sources & map
+## Structure & maintainability
 
-**Data sources — done.** `scripts/build_data.rb` no longer calls Open-Meteo
-directly; it goes through `Providers.resolve(...).fetch(resorts)`, where
-`lib/providers.rb` is a small registry keyed by name (or the
-`SNOWPACK_PROVIDER` env var, default `open_meteo`):
+Prompted by the owner (2026-09-22) asking for an assessment of the codebase
+now that it's grown well past its original size. Grounded in the actual
+numbers, not a general feeling:
 
-```ruby
-module Providers
-  REGISTRY = { "open_meteo" => OpenMeteo, "fixture" => Fixture }.freeze
-  def self.resolve(name = nil)
-    name ||= ENV["SNOWPACK_PROVIDER"] || DEFAULT_NAME
-    REGISTRY.fetch(name) { raise "Unknown data provider #{name.inspect}..." }.new
-  end
-end
-```
+| | |
+|---|---|
+| `assets/app.js` | 1,199 lines, ~73 functions, one closure |
+| — inside the DOM-guarded block | ~950 lines: map, list, filters, rankings, chart, live-fetch, all sharing module-level state |
+| — exported (unit-testable) functions | 21 |
+| `data/resorts.json` | 477 records, no schema — validity is implicit across several test files |
+| `test/browser/*.js` | 228 lines of real, working browser tests — 0 of them run in CI |
 
-A second provider, `lib/providers/fixture.rb`, reads a captured snapshot
-(`data/fixture_conditions.json`) instead of hitting the network — real value
-on its own (offline builds, no flaky-connection risk, fast deterministic
-runs in CI or locally), not just a proof that the interface works:
-`SNOWPACK_PROVIDER=fixture ruby scripts/build_data.rb`. This is one
-concrete step short of the original proposal's `--provider` flag idea (an
-env var was simpler and just as swappable per-environment); a real
-historical-archive provider or a `--provider` CLI flag both slot into the
-same registry later without touching `build_data.rb`'s call site.
+**What's still holding up.** The pure/DOM split in `app.js` (the
+`typeof document !== 'undefined'` guard) has survived three feature rounds
+without erosion — every addition (tiers, filters, rankings) exported its
+logic the same way the original code did. `lib/providers.rb`,
+`lib/season_curve.rb` and `lib/openskimap_import.rb` are still small,
+single-purpose, and independently tested. `test/region_consistency_test.rb`
+is a good model of the kind of test this section asks for more of: it
+cross-checks independent sources of truth (the Ruby importer, `app.js`, the
+CSS, the real data) instead of trusting them to stay in sync by convention.
 
-`data/resorts.json`'s fields are now also split into the two concerns that
-used to be mixed together: resort *facts* (name, region, coordinates,
-elevation) live in `data/resorts.json`, and *illustrative-curve tuning
-knobs* (`typical_peak_cm`, `typical_min_c`, `typical_edge_c`) live in
-`data/illustrative_curve_tuning.json`, keyed by resort id and merged in by
-`build_data.rb`. Once real historical data exists for a resort, its tuning
-entry just goes away — `resorts.json` itself never needs to change shape
-for that transition.
+**a) Split `assets/app.js` into ES modules along its existing section
+boundaries** (map, list, filters, rankings, chart, live-fetch, plus one
+shared pure-logic module) using native `<script type="module">` — no
+bundler, so `ARCHITECTURE.md`'s "no build step" property stays true. This is
+the highest-leverage item here: it turns the section comments (`// ----
+filters ----`, etc.) into real boundaries instead of honesty-system ones,
+and it lets the pure-logic module be imported directly by both the browser
+and the Node tests, retiring the `module.exports` guard at the bottom of
+the file.
 
-**Map — done.** `index.html` (the GitHub Pages version) now renders
-[Leaflet](https://leafletjs.com/) + OpenStreetMap tiles instead of a baked
-SVG coastline, with resort coordinates read straight from `lat`/`lon` — no
-more build-time projection step at all. This fixed a real problem, not just
-a cosmetic one: several resorts (the Nagano/Niigata cluster especially) sat
-close enough to overlap into an unclickable clump on the old static map, and
-there was no way to zoom in and separate them. The Claude Artifact version
-still runs the old static-SVG renderer, since its sandbox still blocks tile
-loading — the two deployments have now genuinely diverged, worth remembering
-if either one gets touched in isolation.
+**b) Wire the browser checks into CI.** `test/browser/ranking_check.js`
+drives the real page against a mocked winter and checks the rendered DOM
+against an independently-computed expected result — it's a real regression
+test, but right now it only runs when someone happens to run it by hand in
+a browser. A `test-browser` CI job (a headless browser — Playwright is the
+standard choice — loading `tmp/debug.html?winter` and failing the build on
+`failed > 0`) would close that, and the DOM-coverage gap noted under
+"Testing gaps" above. Worth deciding explicitly rather than adding
+silently: this is the project's first npm dependency, even if it's
+dev/CI-only and `node --test test/js` stays zero-install.
 
-Two things worth knowing about the implementation: dark mode is a CSS
-`invert()` filter on the one OpenStreetMap tile layer rather than a second
-"dark" tile provider — a free CartoDB dark-tile endpoint was tried first and
-started requiring an API key mid-implementation, which is exactly the
-third-party-dependency risk this section originally warned about. And
-scroll-wheel zoom is deliberately disabled (the zoom buttons, double-click,
-and touch pinch-zoom cover it) since a map that captures the mouse wheel
-fights the page's own scrolling.
+**c) Add a test tying `import_openskimap.rb`'s `MATCHERS` table to
+`data/resorts.json`'s real ids.** The 20 curated resort ids are hardcoded
+twice today — once as data, once as regex-matched `MATCHERS` keys — and
+nothing but a `STDERR` warning at import time notices if they drift apart.
+The resort-name-cleanup backlog item below would be exactly the kind of
+change that causes that drift. One assertion (`MATCHERS.keys` is a subset
+of the curated ids) closes it. Small.
 
-Smaller flexibility win — done. Season constants (`season_start`,
-`season_end`, `peak_date`, the bell curve's `bell_width`, plus `step_days`)
-now live in `config/season.json` and get read by `build_data.rb`, which
-passes them as keyword arguments into `SeasonCurve.generate`.
-`lib/season_curve.rb` itself still defaults those same keywords to its own
-module constants, so it stays pure/no-I/O and its existing unit tests keep
-passing unchanged regardless of whether the config file is present. "Adapt
-this for a different mountain range or hemisphere" is now a config change,
-with one caveat worth flagging honestly: this only covers the *build-time*
-season curve. The client-side chart in `assets/app.js` still has its own
-month labels and a "mid-February" reference baked in for display purposes,
-and those were not wired to `config/season.json` — doing so would need the
-config to be exposed to the client (e.g. embedded in `ski_data.json`), which
-is a bigger change than "pull constants into a file" and is left for a
-future pass if this ever actually needs to support a Southern Hemisphere
-resort.
+**d) A minimal schema/validator for `data/resorts.json`** — required
+fields, types, id format — as one Ruby test, rather than the shape being
+implicit across `region_consistency_test.rb` and whatever else happens to
+assert on it. Small.
 
-## 3. Testing & quality assurance
-
-**a) `scripts/build_data.rb`'s computation — done.** `test/season_curve_test.rb`
-and `test/providers/open_meteo_test.rb` exist, run via `rake test` (Ruby's
-bundled `minitest` and `rake` — nothing to install). 15 tests, 77 assertions,
-covering exactly the properties hand-verified once already, by eye,
-mid-conversation, plus the provider's error paths:
-
-- `SeasonCurve.bell` peaks at exactly 1.0 on the peak offset, is symmetric
-  around it, and decreases moving away from it.
-- `SeasonCurve.temperature_at` hits the edge value at both season boundaries,
-  the min value at the peak offset, and clamps rather than extrapolating
-  past the season.
-- `SeasonCurve.generate`'s output matches the known values from earlier in
-  the project exactly (54.9cm at both season edges, 220.0cm/-12.0°C at the
-  peak, for a Niseko-like resort) and never goes negative.
-- `Providers::OpenMeteo#fetch` — tested with `Net::HTTP.get` stubbed via
-  `Net::HTTP.stub(:get, canned_json) { ... }` (from `minitest/mock`, also
-  bundled — no network access needed to run this suite). Covers the happy
-  path (unit conversion, rounding, order preserved), and both error paths
-  (a too-short response, a non-array error response) raising with a message
-  that actually says what went wrong.
-
-`Providers::OpenMeteo#fetch` is still a plain method, not yet the swappable
-"pick a provider" interface proposed in §2 — the test stubs `Net::HTTP.get`
-directly rather than injecting a fake provider. §2's fuller interface would
-make that cleaner, but nothing here was blocked on it.
-
-**b) The client-side JS — done, for the genuinely pure functions.**
-The two real gaps identified here have both been closed:
-
-- `assets/app.js` now has a real split: the pure config and functions
-  (`hexToRgb`, `lerpColor`, `tempToColor`, `depthToRadius`, `fmtDate`,
-  `fmtFetched`) sit at the top of the file, outside any DOM dependency.
-  Everything that touches `document`, Leaflet, or `fetch` — including
-  `getDisplay`, which closes over `state`/`DATES` — is now wrapped in
-  `if (typeof document !== 'undefined') { ... }`, and a
-  `if (typeof module !== 'undefined' && module.exports) { module.exports = {...} }`
-  guard at the bottom exports the pure functions. In a browser, `document`
-  exists and `module` doesn't, so the page behaves exactly as before (byte-
-  identical output verified locally before and after: the same
-  `rgb(47,131,224)` for Asahidake at -16°C as was hand-verified earlier).
-  In Node, `document` doesn't exist, so the whole DOM-touching block is
-  skipped and only the pure functions get defined and exported — no jsdom
-  needed.
-- `tempToColor` takes the three temperature-scale colors as parameters now
-  instead of reading them from CSS via `cssVar()` internally — the smaller
-  change, as expected, and it cost the browser build nothing: the one call
-  site in `renderMarkers()` just passes `cssVar('--temp-cold')` etc.
-  explicitly.
-
-`test/js/app.test.js` covers all six exported functions with `node:test` —
-17 tests, including the exact-value regression tests for the area-scaling
-formula and the squared-easing color fix (`-8°C → rgb(71,134,201)`, matching
-what was hand-verified via the browser console earlier in the project).
-Run via `node --test test/js`; wired into CI as a second job alongside the
-Ruby suite.
-
-`getDisplay` is not covered — it closes over `state`/`DATES`/`DATA`, which
-only exist inside the DOM-guarded section, so testing it would mean either
-injecting that state explicitly (a real refactor, not just an export) or a
-DOM shim. Not done here; a reasonable next step if this suite grows.
-
-For anything that touches the DOM directly (do 20 markers render, does
-clicking one update the detail panel, does the mode toggle disable the
-slider), a headless-browser smoke test (Playwright is the common choice)
-driving the built `index.html` would catch regressions a pure-function test
-can't. Still a heavier lift, still a phase-2 item.
-
-**c) CI — done.** `.github/workflows/test.yml` runs `rake test` on every push
-and pull request to `main`, via `ruby/setup-ruby` — no Gemfile needed since
-`minitest` and `rake` are both default gems. Fast and network-free, same as
-running it locally, since §3a's suite already stubs the one network call.
-Once §3b's JS tests exist, add a second job (or step) to the same workflow
-rather than a new one. This can also share infrastructure with the
-daily-snapshot workflow already proposed in the README: the same repo ends
-up with one scheduled workflow that fetches real data and one on-push
-workflow that runs tests against mocked data.
-
-**d) Manual/visual QA.** Some things are impractical to fully automate —
-color legibility in both light and dark mode, chart label collisions, mobile
-layout. Worth writing down the checklist we effectively followed by hand in
-this conversation (screenshot + a few targeted `getAttribute`/console checks
-against the known-correct formulas) as a short, repeatable
-`docs/QA_CHECKLIST.md`, so it doesn't depend on remembering to do it.
-
-## Suggested order
-
-Grouped by the chapter it belongs to above, so the numbering here doesn't
-collide with the §1/§2/§3 chapter references used throughout this doc.
-
-**§1 Code structure & quality**
-1. ~~Extract CSS/JS out of `template.html`~~ — done.
-2. ~~The three smaller issues~~ (`state` mutation, `innerHTML` fragility,
-   CSS-drift protection) — done.
-
-**§2 Flexibility — data sources & map**
-1. ~~Leaflet map~~ — done.
-2. ~~Provider interface~~ — done: `lib/providers.rb` registry, plus a real
-   second provider (`lib/providers/fixture.rb`) for offline builds.
-3. ~~Season-constants config file~~ — done: `config/season.json`.
-
-**§3 Testing & quality assurance**
-1. ~~Ruby unit tests (§3a)~~ — done: `rake test`, 15 tests, 77 assertions.
-2. ~~JS test exports (§3b)~~ — done: `node --test test/js`, 17 tests, for
-   the genuinely pure functions (`getDisplay` still isn't reachable — see §3b).
-3. ~~CI (§3c)~~ — done: `.github/workflows/test.yml` runs both suites (a
-   `test-ruby` job and a `test-js` job) on every push/PR to `main`.
-
-All three items in this chapter are done, except the manual QA checklist
-(§3d) and the headless-browser smoke test mentioned in §3b, neither of which
-were tracked here as numbered items.
-
-§1 and §2 are fully done now. Left in §3: the manual QA checklist (§3d) and
-the headless-browser smoke test mentioned in §3b.
-
-Let me know which of these you'd like implemented first — happy to start
-with any one in isolation.
+None of this is urgent: nothing here is a bug, and the app works. It's a
+"the next 500 lines will be more expensive than the last 500 were"
+observation, mostly (a) and (b).
 
 ## Backlog / to consider
 
 Smaller open items, mostly raised while adding the ~450 OpenSkiMap resorts
-(branch `more-resorts`). None blocks anything; they're here so they don't get
-lost.
+(branch `more-resorts`). None blocks anything; they're here so they don't
+get lost.
 
 **Rethink the typical-season curves.** Asked for explicitly. Today they're a
 synthetic bell curve per resort, driven by three hand-set numbers in
 `data/illustrative_curve_tuning.json`. Only ~27 resorts have one (every
-`major` resort; everything smaller is live-only by design). Two things to look
-at:
+`major` resort; everything smaller is live-only by design). Two things to
+look at:
 - The 7 entries added with the import (Tsugaike, Takasu, Sahoro, Nekoma,
-  Joetsu, Tomamu, Hakuba Iwatake) are **my rough estimates by analogy to
-  neighbouring curated resorts**, not sourced numbers. Worth checking against
-  something real before anyone relies on them.
+  Joetsu, Tomamu, Hakuba Iwatake) are **rough estimates by analogy to
+  neighbouring curated resorts**, not sourced numbers. Worth checking
+  against something real before anyone relies on them.
 - A real replacement would compute a per-resort, day-of-year median from
   historical data (worth checking whether Open-Meteo's historical/archive
-  API offers snow depth at useful quality for mountain terrain; the daily-
-  snapshot Action in the README is the other route). That would retire the
-  tuning knobs and could give *every* resort a curve, not just the big ones.
-  The same terrain-resolution caveat that applies to the live numbers would
-  apply here.
+  API offers snow depth at useful quality for mountain terrain; the
+  daily-snapshot Action in the README is the other route). That would
+  retire the tuning knobs and could give *every* resort a curve, not just
+  the big ones. The same terrain-resolution caveat that applies to the live
+  numbers would apply here.
 
-**Resort names and duplicates.** Deliberately deferred. Names are OpenSkiMap's,
-lightly cleaned (first English part, macrons folded, parentheticals dropped).
-Known rough edges: one resort has only a Japanese name
-(`osm_812dcf8b`, Grand Sunpia Inawashiro); two areas are both called "Manza
-Onsen" (ids `manza_onsen`, `manza_onsen_gunma`); and only Shiga Kogen has
-its OpenSkiMap sub-areas merged into one resort. Other places OpenSkiMap
-splits what visitors think of as one destination: the Naeba / Tashiro /
-Kagura / Mitsumata group, Myoko's several resorts, Niseko Moiwa (listed
-separately from Niseko United). Search also only matches English names, so
-typing a resort's Japanese name finds nothing.
+**Resort names and duplicates.** Deliberately deferred. Names are
+OpenSkiMap's, lightly cleaned (first English part, macrons folded,
+parentheticals dropped). Known rough edges: one resort has only a Japanese
+name (`osm_812dcf8b`, Grand Sunpia Inawashiro); two areas are both called
+"Manza Onsen" (ids `manza_onsen`, `manza_onsen_gunma`); and only Shiga
+Kogen has its OpenSkiMap sub-areas merged into one resort. Other places
+OpenSkiMap splits what visitors think of as one destination: the Naeba /
+Tashiro / Kagura / Mitsumata group, Myoko's several resorts, Niseko Moiwa
+(listed separately from Niseko United). Search also only matches English
+names, so typing a resort's Japanese name finds nothing.
 
-**Licensing of the imported data — done.** OpenSkiMap's data derives from
-OpenStreetMap and is under the ODbL, whose share-alike condition applies to
-the derived data files (the repo is public, so publishing them is public use).
-Decided with the owner (2026-09-21): label them ODbL and leave the code MIT.
-[DATA_LICENSE.md](../DATA_LICENSE.md) lists which files are under which terms;
-`ski_data.json` also carries a `data_license` note inside it; the page footer
-and README credit OpenSkiData's recommended wording (OpenSkiData / OpenSkiMap.org,
-© OpenStreetMap contributors (ODbL), Skimap.org, Who's On First, © Mapterhorn).
-I haven't verified which of the non-OSM sources our particular fields come
-from, so the full list is the safe choice. The project is a hobby with no
-commercial aspirations (also confirmed by the owner), which is what keeps it
-inside Open-Meteo's free non-commercial tier: ads or subscriptions would
-change that. Not legal advice.
-
-**Tier thresholds and zoom levels are first guesses.** `MAJOR_MIN_KM = 20` and
-`MEDIUM_MIN_KM = 8` in `lib/openskimap_import.rb`, and `TIER_MIN_ZOOM`
+**Tier thresholds and zoom levels are first guesses.** `MAJOR_MIN_KM = 20`
+and `MEDIUM_MIN_KM = 8` in `lib/openskimap_import.rb`, and `TIER_MIN_ZOOM`
 (medium 6, small 8) in `assets/app.js`. Some resorts people would call
 notable land in `medium` and so have no typical-season curve: Ontake 2240
-(top elevation 2,215 m, the highest of any resort outside the major tier), Kamui Ski Links, Aomori
-Spring, Shizukuishi, Palcall Tsumagoi. Promoting one is a tier edit in
-`resorts.json` plus a tuning entry.
+(top elevation 2,215 m, the highest of any resort outside the major tier),
+Kamui Ski Links, Aomori Spring, Shizukuishi, Palcall Tsumagoi. Promoting one
+is a tier edit in `resorts.json` plus a tuning entry.
 
 **Live-refresh call budget.** Open-Meteo's free tier allows 600/minute,
 5,000/hour and 10,000/day *per IP* (so each visitor has their own budget,
-except behind shared IPs). Whether a multi-location request counts as one call
-or one per location isn't documented anywhere I could read, and an earlier
-version of these docs wrongly stated the per-location reading as fact. The
+except behind shared IPs). Whether a multi-location request counts as one
+call or one per location isn't documented anywhere that could be found. The
 page is built for the worse case: it refreshes only what's on screen, once
-per resort per page view, ~30-140 locations per action. If it turns out to be
-one call per request, this is over-cautious but harmless. If traffic grows, or
-the site ever carries ads or subscriptions (which makes it "commercial" under
-Open-Meteo's terms and needs a paid plan), the daily-snapshot workflow
-(README, Next steps) would let browsers skip most of those calls. That
-workflow would run from GitHub's shared runner IPs, and Open-Meteo's creator
-has noted the per-IP limits are awkward for shared hosting, so it's worth
-testing before relying on it.
+per resort per page view, ~30-140 locations per action. If it turns out to
+be one call per request, this is over-cautious but harmless. If traffic
+grows, or the site ever carries ads or subscriptions (which makes it
+"commercial" under Open-Meteo's terms and needs a paid plan), the
+daily-snapshot workflow (README, Next steps) would let browsers skip most
+of those calls. That workflow would run from GitHub's shared runner IPs,
+and Open-Meteo's creator has noted the per-IP limits are awkward for shared
+hosting, so it's worth testing before relying on it.
 
 **Smaller things.**
 - ~40 resorts have no known top elevation (OpenSkiMap has no run/lift data
   for them); the UI shows a dash.
-- Filters and the list card were checked at desktop width only; the small-
-  screen layout (chips wrapping, list capped at 70vh) hasn't been looked at
-  on a real phone.
+- Filters and the list card were checked at desktop width only; the
+  small-screen layout (chips wrapping, list capped at 70vh) hasn't been
+  looked at on a real phone.
 - Filter state isn't in the URL, so a filtered view can't be shared.
 - All ~480 markers are SVG paths, which is fine at this size and is what
   gives us keyboard/ARIA hooks; a Canvas renderer would only matter if the
   count grew a lot.
+
+## Suggested order
+
+Roughly quick-win-first, independent of each other unless noted.
+
+1. Manual QA checklist ("Testing gaps") — write down what's already being
+   done by hand. Small, no dependencies.
+2. `MATCHERS` test ("Structure & maintainability" (c)) — small, no
+   dependencies, worth doing any time.
+3. `data/resorts.json` schema/validator ("Structure & maintainability" (d))
+   — small, no dependencies.
+4. Split `assets/app.js` into ES modules ("Structure & maintainability"
+   (a)) — no dependency on anything else here; the sooner this lands, the
+   cheaper every later change (including Forecast) gets to make.
+5. Wire the browser checks into CI ("Structure & maintainability" (b)) —
+   independent of 4, but touching the same test surface, so doing them
+   close together avoids rebasing one against the other. Also closes the
+   DOM-coverage half of "Testing gaps."
+6. Forecast view and forecast-based Top 10 — the biggest item here; medium
+   size, depends on nothing above but benefits from (4) already being done.
+
+Let me know which of these you'd like implemented first — happy to start
+with any one in isolation.
