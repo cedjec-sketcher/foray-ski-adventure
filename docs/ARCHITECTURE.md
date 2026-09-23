@@ -366,6 +366,18 @@ only shown or hidden.
   while a ranking is active, and the rows themselves — not copies — move
   into it, so click handlers and existing DOM identity survive; ending the
   ranking moves them back to their original group.
+- **A row's one emphasized figure (`.highlight`) follows the reason the
+  resort is on screen, not a fixed field.** List rows used to always show
+  `typical_peak_cm` there, regardless of mode or ranking — mixing a real
+  live reading with an illustrative typical-season figure with no visual
+  distinction between them, and showing it even in rankings it had nothing
+  to do with (owner feedback, 2026-09-23). It's now empty by default (the
+  detail card below already covers typical peak for a selected resort) and
+  only carries text for the one ranking whose sort key isn't already the
+  row's live reading: Highest altitude shows elevation there, styled
+  larger/bolder than the row's other numbers, with the smaller `.elev` line
+  correspondingly dropping elevation so it isn't shown twice. Snowiest
+  needs no such swap — its sort key already is the live reading in `.live`.
 
 ## Known constraints (as of this snapshot)
 

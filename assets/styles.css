@@ -285,8 +285,8 @@ path.marker.marker-dim{pointer-events:none !important;cursor:default;}
 }
 .resort-row:hover{background:var(--surface-sunken);}
 .resort-row.is-selected{background:color-mix(in srgb, var(--accent) 16%, var(--surface));}
-/* Every cell is placed explicitly. Leaving .peak's column to auto-placement
-   let it claim column 1 (row-locked items are placed first), pushing the
+/* Every cell is placed explicitly. Leaving .highlight's column to
+   auto-placement let it claim column 1 (row-locked items are placed first), pushing the
    name into the middle of the row. */
 .resort-row .name{grid-column:1;grid-row:1;font-weight:500;font-size:.9rem;}
 .resort-row .rank{
@@ -301,10 +301,13 @@ path.marker.marker-dim{pointer-events:none !important;cursor:default;}
   font-family:"IBM Plex Mono",monospace;font-size:.78rem;
   color:var(--ink-3);text-align:right;font-variant-numeric:tabular-nums;
 }
-.resort-row .peak{
+/* Empty by default (zero width, no gap) - only carries text when a ranking
+   needs to emphasize a figure that isn't already the row's live reading
+   (currently just elevation, for Highest altitude - see renderList()). */
+.resort-row .highlight{
   grid-column:3;grid-row:1 / 3;
-  font-family:"IBM Plex Mono",monospace;font-size:.78rem;
-  color:var(--ink-2);text-align:right;font-variant-numeric:tabular-nums;
+  font-family:"IBM Plex Mono",monospace;font-size:1.05rem;font-weight:600;
+  color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;
 }
 
 /* ---- Detail ---- */
