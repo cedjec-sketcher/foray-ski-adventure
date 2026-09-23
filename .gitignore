@@ -1,2 +1,5 @@
 tmp/
-.claude/
+# Local dev-server config for the browser-preview tool — machine-specific,
+# not a project asset. .claude/agents/ (custom subagent definitions) IS
+# committed: it's reusable across sessions and machines, unlike this file.
+.claude/launch.json

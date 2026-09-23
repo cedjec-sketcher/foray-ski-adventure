@@ -230,12 +230,24 @@ path.marker.marker-dim{pointer-events:none !important;cursor:default;}
   padding:3px 10px;cursor:pointer;
 }
 .chip:hover{background:var(--surface-sunken);}
+/* Solid fill, not just a tinted border: a 16%-tint background against an
+   already-dark surface read as barely different from inactive (UX review,
+   docs/CHANGELOG.md). Same accent/accent-ink pairing the rank badges use
+   elsewhere on the page, so "on" reads the same way everywhere. */
 .chip.is-active{
-  color:var(--ink);font-weight:500;
-  background:color-mix(in srgb, var(--accent) 16%, var(--surface));
-  border-color:color-mix(in srgb, var(--accent) 45%, var(--border));
+  color:var(--accent-ink);font-weight:600;
+  background:var(--accent);
+  border-color:var(--accent);
 }
+.chip.is-active .chip-count{color:inherit;opacity:.75;}
 .chip .dot{width:7px;height:7px;border-radius:50%;flex:none;}
+.chip:disabled{opacity:.45;cursor:not-allowed;}
+.chip:disabled:hover{background:none;}
+.chip-label{
+  align-self:center;margin-right:2px;
+  font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink-3);
+}
 .chip-count{font-family:"IBM Plex Mono",monospace;font-size:.68rem;color:var(--ink-3);}
 .filter-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .check{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--ink-2);cursor:pointer;}
@@ -249,7 +261,7 @@ path.marker.marker-dim{pointer-events:none !important;cursor:default;}
 /* ---- List ---- */
 /* display:grid/flex below would otherwise beat the [hidden] attribute's
    UA-stylesheet display:none, leaving "hidden" rows and groups on screen. */
-.resort-row[hidden], .region-group[hidden], .link-btn[hidden]{display:none;}
+.resort-row[hidden], .region-group[hidden], .link-btn[hidden], .rank-group[hidden], .rank[hidden]{display:none;}
 .region-group + .region-group{margin-top:16px;}
 .region-heading{
   display:flex;align-items:center;gap:7px;
@@ -277,6 +289,12 @@ path.marker.marker-dim{pointer-events:none !important;cursor:default;}
    let it claim column 1 (row-locked items are placed first), pushing the
    name into the middle of the row. */
 .resort-row .name{grid-column:1;grid-row:1;font-weight:500;font-size:.9rem;}
+.resort-row .rank{
+  display:inline-block;min-width:1.55em;margin-right:7px;padding:0 .3em;
+  text-align:center;font-family:"IBM Plex Mono",monospace;font-size:.72rem;font-weight:600;
+  color:var(--accent-ink);background:var(--accent);border-radius:999px;
+}
+.rank-group + .region-group{margin-top:16px;}
 .resort-row .elev{grid-column:1;grid-row:2;font-size:.72rem;color:var(--ink-3);}
 .resort-row .live{
   grid-column:2;grid-row:1;

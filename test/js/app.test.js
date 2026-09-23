@@ -247,3 +247,138 @@ test('REGION_ORDER lists the seven regions north to south', () => {
   // importer's, the CSS colour tokens, and the regions in data/resorts.json.
   assert.deepEqual(app.REGION_ORDER, ['Hokkaido', 'Tohoku', 'Kanto', 'Niigata', 'Nagano', 'Chubu', 'Western Japan']);
 });
+
+// sortResorts is the one order shared by the resort list and the map
+// markers' DOM order (so keyboard Tab order matches the list) - see the
+// "Keyboard Tab order" fix in docs/CHANGELOG.md.
+const sr = (id, region, run) => ({ id, name: id, region, run_km: run });
+
+test('sortResorts groups by REGION_ORDER, largest run_km first within a region', () => {
+  const input = [sr('a', 'Nagano', 5), sr('b', 'Hokkaido', 1), sr('c', 'Nagano', 20), sr('d', 'Hokkaido', 50)];
+  const sorted = app.sortResorts(input).map((r) => r.id);
+  assert.deepEqual(sorted, ['d', 'b', 'c', 'a']);
+});
+
+test('sortResorts treats a missing run_km as 0, not as sorting last unpredictably', () => {
+  const input = [sr('a', 'Hokkaido', undefined), sr('b', 'Hokkaido', 5)];
+  assert.deepEqual(app.sortResorts(input).map((r) => r.id), ['b', 'a']);
+});
+
+test('sortResorts does not mutate its input array', () => {
+  const input = [sr('a', 'Nagano', 1), sr('b', 'Hokkaido', 1)];
+  const before = input.map((r) => r.id);
+  app.sortResorts(input);
+  assert.deepEqual(input.map((r) => r.id), before);
+});
+
+test('sortResorts is stable: equal region and run_km keep their original relative order', () => {
+  const input = [sr('a', 'Hokkaido', 10), sr('b', 'Hokkaido', 10), sr('c', 'Hokkaido', 10)];
+  assert.deepEqual(app.sortResorts(input).map((r) => r.id), ['a', 'b', 'c']);
+});
+
+// ---- Top-10 rankings ----
+const rk = (id, snow, elev, run) => ({ id, name: id, region: 'Nagano', prefecture: 'Nagano', tier: 'small',
+  snow_depth_cm: snow, elevation_top_m: elev, run_km: run || 0 });
+
+test('rankResorts (snow) orders by depth, deepest first', () => {
+  const list = [rk('a', 10, 1000), rk('b', 80, 1000), rk('c', 45, 1000)];
+  assert.deepEqual(app.rankResorts(list, 'snow', 10), ['b', 'c', 'a']);
+});
+
+test('rankResorts keeps only the top n', () => {
+  const list = Array.from({ length: 15 }, (_, i) => rk('r' + i, 10 + i, 1000));
+  const top = app.rankResorts(list, 'snow', 10);
+  assert.equal(top.length, 10);
+  assert.equal(top[0], 'r14');
+  assert.equal(top[9], 'r5');
+});
+
+test('rankResorts (snow) leaves out resorts with 0 cm, so an off-season list is empty rather than ten ties on zero', () => {
+  assert.deepEqual(app.rankResorts([rk('a', 0, 1000), rk('b', 0, 2000)], 'snow', 10), []);
+  assert.deepEqual(app.rankResorts([rk('a', 0, 1000), rk('b', 12, 500)], 'snow', 10), ['b']);
+});
+
+test('rankResorts ignores resorts with a missing or non-numeric value', () => {
+  const list = [rk('a', null, 1000), rk('b', undefined, 1000), rk('c', NaN, 1000), rk('d', 5, 1000)];
+  assert.deepEqual(app.rankResorts(list, 'snow', 10), ['d']);
+  const noElev = [rk('a', 1, null), rk('b', 1, undefined), rk('c', 1, 1500)];
+  assert.deepEqual(app.rankResorts(noElev, 'altitude', 10), ['c']);
+});
+
+test('rankResorts (snow) breaks a depth tie by elevation, then by id, so the list is stable', () => {
+  const list = [rk('low', 40, 900), rk('high', 40, 1800), rk('mid_b', 40, 1200), rk('mid_a', 40, 1200)];
+  assert.deepEqual(app.rankResorts(list, 'snow', 10), ['high', 'mid_a', 'mid_b', 'low']);
+});
+
+test('rankResorts (snow) applies the tie-break at the cutoff, so the 10th place is deterministic', () => {
+  const list = [rk('a', 50, 1000), rk('b', 40, 900), rk('c', 40, 1900), rk('d', 40, 1400)];
+  assert.deepEqual(app.rankResorts(list, 'snow', 3), ['a', 'c', 'd']);
+});
+
+test('rankResorts (altitude) orders by top elevation, breaking ties by run length', () => {
+  const list = [rk('a', 0, 2000, 5), rk('b', 0, 2300, 1), rk('c', 0, 2000, 30)];
+  assert.deepEqual(app.rankResorts(list, 'altitude', 10), ['b', 'c', 'a']);
+});
+
+test('rankResorts (altitude) ranks a resort with no snow at all', () => {
+  assert.deepEqual(app.rankResorts([rk('a', 0, 1500), rk('b', 0, 2500)], 'altitude', 10), ['b', 'a']);
+});
+
+test('rankResorts returns nothing for an unknown ranking, and does not reorder its input', () => {
+  const list = [rk('a', 10, 1000), rk('b', 80, 2000)];
+  const before = list.map((r) => r.id);
+  assert.deepEqual(app.rankResorts(list, 'mystery', 10), []);
+  app.rankResorts(list, 'snow', 10);
+  assert.deepEqual(list.map((r) => r.id), before);
+});
+
+test('isRankingReady: altitude is always ready, snow waits until every candidate has been looked at', () => {
+  const c = [rk('a', 1, 1), rk('b', 1, 1)];
+  assert.equal(app.isRankingReady('altitude', c, {}), true);
+  assert.equal(app.isRankingReady('snow', c, {}), false);
+  assert.equal(app.isRankingReady('snow', c, { a: true }), false);
+  assert.equal(app.isRankingReady('snow', c, { a: true, b: true }), true);
+  assert.equal(app.isRankingReady('snow', [], {}), true);
+});
+
+test('passesFilters with a Top-10 list admits only its members (and an empty list admits nobody)', () => {
+  const a = rk('a', 1, 1), b = rk('b', 1, 1);
+  assert.equal(app.passesFilters(a, ctx({ rankedIds: ['a'] })), true);
+  assert.equal(app.passesFilters(b, ctx({ rankedIds: ['a'] })), false);
+  assert.equal(app.passesFilters(b, ctx({ rankedIds: null })), true);
+  assert.equal(app.passesFilters(a, ctx({ rankedIds: [] })), false);
+});
+
+test('classifyResort: a Top-10 member is revealed at any zoom, even a small resort at the country-wide view', () => {
+  assert.equal(app.classifyResort(R.tiny, ctx({ zoom: 3, rankedIds: ['tiny'] })), 'active');
+});
+
+test('classifyResort: with a Top-10 list active, non-members are dimmed if revealed and hidden if not', () => {
+  assert.equal(app.classifyResort(R.niseko, ctx({ zoom: 5, rankedIds: ['tiny'] })), 'dim');
+  assert.equal(app.classifyResort(R.goryu, ctx({ zoom: 5, rankedIds: ['tiny'] })), 'hidden');
+});
+
+test('classifyResort: an empty Top-10 list (no snow anywhere) dims everything but keeps the selected resort', () => {
+  assert.equal(app.classifyResort(R.niseko, ctx({ rankedIds: [] })), 'dim');
+  assert.equal(app.classifyResort(R.niseko, ctx({ rankedIds: [], selectedId: 'niseko' })), 'active');
+});
+
+test('isListed lists a Top-10 member outside the map view when the flag says it is listed anywhere', () => {
+  assert.equal(app.isListed('active', true, true, false, true), true);
+  assert.equal(app.isListed('active', true, false, false, true), false);
+});
+
+// fetchMetaLabel: the header's fetch-status label. Mode-aware since
+// "LIVE DATA FETCHED" used to show regardless of mode - see the fix in
+// docs/CHANGELOG.md.
+test('fetchMetaLabel: Typical season always reads as a snapshot, regardless of live-fetch outcome', () => {
+  assert.equal(app.fetchMetaLabel('season', true), 'TYPICAL SEASON SHOWN');
+  assert.equal(app.fetchMetaLabel('season', false), 'TYPICAL SEASON SHOWN');
+  assert.equal(app.fetchMetaLabel('season', 'partial'), 'TYPICAL SEASON SHOWN');
+});
+
+test('fetchMetaLabel: Live mode reflects the live-fetch outcome', () => {
+  assert.equal(app.fetchMetaLabel('live', true), 'LIVE DATA FETCHED');
+  assert.equal(app.fetchMetaLabel('live', false), 'SNAPSHOT (LIVE REFRESH FAILED)');
+  assert.equal(app.fetchMetaLabel('live', 'partial'), 'PARTLY LIVE (SOME REFRESHES FAILED)');
+});

@@ -16,6 +16,23 @@
   // ~450 markers never pile up on the country-wide view.
   var TIER_ORDER = ["major","medium","small"];
   var TIER_MIN_ZOOM = { major: 0, medium: 6, small: 8 };
+  // "Top N" lists: which measure ranks, and how many places it shows.
+  var TOP_N = 10;
+  var RANKINGS = ["altitude","snow"];
+
+  // The one fixed resort order used for BOTH the list (grouped by region
+  // under REGION_ORDER headings) and the map markers' DOM order (so Tab
+  // order on the map follows the same order a sighted user reads the list
+  // in, rather than data/resorts.json's raw storage order). Computed once;
+  // never re-sorted at runtime, so it stays a stable Tab order regardless
+  // of which markers happen to be active/dim/hidden right now.
+  function sortResorts(resorts){
+    return resorts.slice().sort(function(a, b){
+      var ra = REGION_ORDER.indexOf(a.region), rb = REGION_ORDER.indexOf(b.region);
+      if(ra !== rb) return ra - rb;
+      return (b.run_km || 0) - (a.run_km || 0);
+    });
+  }
   var MAX_PEAK = 320; // fixed y-domain so charts are comparable across resorts (Hakkoda tops out near 300)
   var DEPTH_DOMAIN = 300; // marker area scale domain
   var TEMP_COLD = -16, TEMP_MID = 0, TEMP_WARM = 20;
@@ -97,11 +114,50 @@
     });
   }
 
-  // ctx: { regions: [] (empty = all), tiers: [enabled tier names], query }
+  function rankValue(r, ranking){
+    var v = ranking === "snow" ? r.snow_depth_cm : r.elevation_top_m;
+    return typeof v === "number" && isFinite(v) ? v : null;
+  }
+
+  // Ids of the top n resorts by the chosen measure, best first. A resort with
+  // no value, or a value of 0, isn't ranked: an off-season "snowiest" list is
+  // empty rather than ten resorts tied on 0 cm. The weather model gives
+  // neighbouring resorts identical depths often, so ties are real and are
+  // broken deterministically: by elevation for snow (higher is colder), by
+  // downhill run length for altitude, then by id.
+  function rankResorts(resorts, ranking, n){
+    if(RANKINGS.indexOf(ranking) === -1) return [];
+    return resorts
+      .filter(function(r){ var v = rankValue(r, ranking); return v !== null && v > 0; })
+      .sort(function(a, b){
+        var d = rankValue(b, ranking) - rankValue(a, ranking);
+        if(d) return d;
+        var t = ranking === "snow"
+          ? (b.elevation_top_m || 0) - (a.elevation_top_m || 0)
+          : (b.run_km || 0) - (a.run_km || 0);
+        if(t) return t;
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      })
+      .slice(0, n)
+      .map(function(r){ return r.id; });
+  }
+
+  // Altitude is static data, so it can always be ranked. Snow depth is only
+  // trustworthy once every candidate has been refreshed live (or given up
+  // on): ranking off a mix of fresh values and an old snapshot would show a
+  // list that then reshuffles as batches arrive. liveDone: { id: true }.
+  function isRankingReady(ranking, candidates, liveDone){
+    if(ranking !== "snow") return true;
+    return candidates.every(function(r){ return liveDone[r.id]; });
+  }
+
+  // ctx: { regions: [] (empty = all), tiers: [enabled tier names], query,
+  //        rankedIds: null, or the ids in the active Top-N list }
   function passesFilters(r, ctx){
     return (ctx.regions.length === 0 || ctx.regions.indexOf(r.region) !== -1) &&
       ctx.tiers.indexOf(r.tier) !== -1 &&
-      matchesQuery(r, ctx.query);
+      matchesQuery(r, ctx.query) &&
+      (!ctx.rankedIds || ctx.rankedIds.indexOf(r.id) !== -1);
   }
 
   // Whether the resort has anything to show in the current mode at all.
@@ -109,12 +165,24 @@
     return mode === "live" || hasCurve(r);
   }
 
+  // The header's fetch-status label. Mode-aware: "LIVE DATA FETCHED" used to
+  // show regardless of mode, in the most prominent line at the top of the
+  // page, above the banner explaining Typical season is a snapshot - easy to
+  // skim as "what I'm looking at is live" when it isn't (UX review). The
+  // live-fetch outcome only matters to what's on screen when mode is live.
+  function fetchMetaLabel(mode, liveFetchOk){
+    if(mode !== "live") return "TYPICAL SEASON SHOWN";
+    if(liveFetchOk === false) return "SNAPSHOT (LIVE REFRESH FAILED)";
+    if(liveFetchOk === "partial") return "PARTLY LIVE (SOME REFRESHES FAILED)";
+    return "LIVE DATA FETCHED";
+  }
+
   // How a resort should appear on the map right now:
   //   'active' - a normal marker (and a row in the list)
   //   'dim'    - filtered out, but drawn as a faint dot so you keep the
   //              geography (only for resorts that would otherwise be showing)
   //   'hidden' - not drawn
-  // ctx: { mode, zoom, regions, tiers, query, selectedId }
+  // ctx: { mode, zoom, regions, tiers, query, selectedId, rankedIds }
   function classifyResort(r, ctx){
     if(!isEligible(r, ctx.mode)) return "hidden";
     if(r.id === ctx.selectedId) return "active";
@@ -122,18 +190,21 @@
     var matches = matchesQuery(r, ctx.query);
     // A search match is always revealed, whatever the zoom: finding a small
     // resort by name shouldn't require already knowing where to zoom.
-    var revealed = isTierRevealed(r.tier, ctx.zoom) || (searching && matches);
+    // Likewise a resort in the active Top-N list: those are the point of it.
+    var ranked = !!ctx.rankedIds && ctx.rankedIds.indexOf(r.id) !== -1;
+    var revealed = isTierRevealed(r.tier, ctx.zoom) || (searching && matches) || ranked;
     if(!revealed) return "hidden";
     return passesFilters(r, ctx) ? "active" : "dim";
   }
 
   // The list follows the map (only resorts in view), except that a search
-  // match is listed wherever it is - clicking it then pans the map there.
+  // match or a resort in the Top-N list (`listedAnywhere`) is listed wherever
+  // it is - clicking it then pans the map there.
   // `passes` is separate from cls because the selected resort is always
   // drawn 'active' (so you don't lose it on the map) even if the filters
   // exclude it, but it shouldn't get a list row the filters say shouldn't exist.
-  function isListed(cls, passes, matchesSearch, inView, mapOnly){
-    return cls === "active" && passes && (!mapOnly || inView || matchesSearch);
+  function isListed(cls, passes, listedAnywhere, inView, mapOnly){
+    return cls === "active" && passes && (!mapOnly || inView || listedAnywhere);
   }
 
   // Default: below and to the right of the cursor. Flips to the other side
@@ -162,7 +233,8 @@
     regions: [],                 // empty = every region
     tiers: TIER_ORDER.slice(),   // enabled size tiers
     query: '',
-    mapOnly: true                // list only what's in the map view
+    mapOnly: true,               // list only what's in the map view
+    ranking: null                // null, 'altitude' or 'snow' (Live mode only): show only the top 10
   };
 
   function cssVar(name){
@@ -185,11 +257,9 @@
 
   // ---- header meta ----
   function updateFetchMeta(){
-    var label = "LIVE DATA FETCHED";
-    if(DATA.live_fetch_ok === false) label = "SNAPSHOT (LIVE REFRESH FAILED)";
-    else if(DATA.live_fetch_ok === 'partial') label = "PARTLY LIVE (SOME REFRESHES FAILED)";
     document.getElementById('fetch-meta').innerHTML =
-      label + "<br>" + fmtFetched(DATA.generated_at) + ' JST<br>source: <a href="https://open-meteo.com/">open-meteo.com</a>';
+      fetchMetaLabel(state.mode, DATA.live_fetch_ok) + "<br>" + fmtFetched(DATA.generated_at) +
+      ' JST<br>source: <a href="https://open-meteo.com/">open-meteo.com</a>';
   }
   updateFetchMeta();
 
@@ -210,6 +280,7 @@
   var liveDone = {};      // id -> true once refreshed (or given up on)
   var liveInFlight = {};  // id -> true while a request covering it is pending
   var liveOk = 0, liveFailed = 0;
+  var liveFailedIds = {}; // id -> true when its batch failed (it keeps the snapshot value)
 
   function refreshLiveConditions(resorts){
     var todo = resorts.filter(function(r){ return !liveDone[r.id] && !liveInFlight[r.id]; });
@@ -245,6 +316,7 @@
       finishLiveBatch(batch, true);
     }).catch(function(err){
       liveFailed += batch.length;
+      batch.forEach(function(r){ liveFailedIds[r.id] = true; });
       DATA.live_fetch_ok = liveOk ? 'partial' : false;
       console.warn("Live conditions fetch failed, showing last-built snapshot for " + batch.length + " resorts:", err);
       finishLiveBatch(batch, false);
@@ -254,21 +326,29 @@
   function finishLiveBatch(batch, ok){
     batch.forEach(function(r){ delete liveInFlight[r.id]; liveDone[r.id] = true; });
     updateFetchMeta();
-    if(ok && state.mode === 'live') refreshAll();
+    // A failure changes nothing on screen by itself, but a Top-10 ranking
+    // waiting on this batch needs to re-check whether it's now ready.
+    if(state.mode === 'live') refreshAll();
+  }
+
+  // What to refresh: normally only resorts that are drawn and in (or just
+  // beyond) the viewport. A snow ranking is the exception: "the snowiest 10"
+  // is only true if every candidate has been looked at, wherever it is, so
+  // it fetches them all (still once each, still in batches of 100).
+  function liveTargets(){
+    if(state.ranking === 'snow') return rankingCandidates();
+    var area = map.getBounds().pad(0.25);
+    return DATA.resorts.filter(function(r){
+      return classes[r.id] === 'active' && area.contains([r.lat, r.lon]);
+    });
   }
 
   // Debounced: called after every map/list refresh, but only fires once the
-  // view has settled, and only for resorts that are drawn and in (or just
-  // beyond) the viewport.
+  // view has settled.
   var liveTimer = null;
   function scheduleLiveRefresh(){
     clearTimeout(liveTimer);
-    liveTimer = setTimeout(function(){
-      var area = map.getBounds().pad(0.25);
-      refreshLiveConditions(DATA.resorts.filter(function(r){
-        return classes[r.id] === 'active' && area.contains([r.lat, r.lon]);
-      }));
-    }, 350);
+    liveTimer = setTimeout(function(){ refreshLiveConditions(liveTargets()); }, 350);
   }
 
   // ---- map ----
@@ -314,7 +394,11 @@
   var markerLayer = L.layerGroup().addTo(map);
   var markerEls = {};
   var classes = {};       // id -> 'active' | 'dim' | 'hidden', from the last renderMarkers()
-  DATA.resorts.forEach(function(r){
+  // The list's own order (region, then size), reused for the markers' DOM
+  // order too, so keyboard Tab order over the map follows the same order a
+  // sighted user reads the list in - see renderMarkers()'s bulk restacking.
+  var SORTED_RESORTS = sortResorts(DATA.resorts);
+  SORTED_RESORTS.forEach(function(r){
     var m = L.circleMarker([r.lat, r.lon], { className: 'marker' });
     m.on('click', function(){ select(r.id); });
     m.on('mouseover', function(e){ showMapTip(e.originalEvent, r); });
@@ -353,9 +437,34 @@
   }
   function hideMapTip(){ mapTip.classList.remove('visible'); }
 
-  function currentCtx(){
+  // The context without the Top-10 restriction: what decides which resorts
+  // are *candidates* for a ranking.
+  function baseCtx(){
     return { mode: state.mode, zoom: map.getZoom(), regions: state.regions, tiers: state.tiers,
-      query: state.query, selectedId: state.selectedId };
+      query: state.query, selectedId: state.selectedId, rankedIds: null };
+  }
+  function currentCtx(){
+    var ctx = baseCtx();
+    ctx.rankedIds = rankState.ids;
+    return ctx;
+  }
+
+  // Top-10 list, recomputed on every refresh from the candidates (resorts
+  // that pass the other filters): ids is null when no ranking is active or
+  // while a snow ranking is still waiting for live data.
+  var rankState = { ids: null, pending: false, candidates: [] };
+  function rankingCandidates(){
+    var ctx = baseCtx();
+    return DATA.resorts.filter(function(r){ return isEligible(r, ctx.mode) && passesFilters(r, ctx); });
+  }
+  function computeRanking(){
+    rankState = { ids: null, pending: false, candidates: [] };
+    if(!state.ranking) return;
+    if(state.ranking === 'snow' && state.mode !== 'live') return; // no snow ranking on made-up numbers
+    var candidates = rankingCandidates();
+    rankState.candidates = candidates;
+    if(!isRankingReady(state.ranking, candidates, liveDone)){ rankState.pending = true; return; }
+    rankState.ids = rankResorts(candidates, state.ranking, TOP_N);
   }
 
   // Set by renderMarkers(), read by renderStatus(): how many resorts pass the
@@ -367,11 +476,11 @@
     var cold = cssVar('--temp-cold'), mid = cssVar('--temp-mid'), warm = cssVar('--temp-warm');
     var surface = cssVar('--surface'), faint = cssVar('--ink-3');
     zoomHeldBack = 0;
+    var dimOnes = [], activeOnes = []; // built in SORTED_RESORTS order, restacked at the end
 
-    DATA.resorts.forEach(function(r){
+    SORTED_RESORTS.forEach(function(r){
       var m = markerEls[r.id];
       var cls = classifyResort(r, ctx);
-      var before = classes[r.id];
       classes[r.id] = cls;
 
       if(cls === 'hidden'){
@@ -390,6 +499,7 @@
           el.setAttribute('aria-hidden', 'true');
           el.removeAttribute('aria-label');
         }
+        dimOnes.push(m);
         return;
       }
 
@@ -407,10 +517,16 @@
         el.removeAttribute('aria-hidden');
         el.setAttribute('aria-label', r.name + ", " + r.region + ", " + Math.round(disp.depth) + " centimeters, " + disp.temp.toFixed(0) + " degrees");
       }
-      // Faint dots are drawn under the real markers: lift a marker the
-      // moment it becomes active, not on every redraw (each is a DOM move).
-      if(before !== 'active') m.bringToFront();
+      activeOnes.push(m);
     });
+
+    // Faint dots are drawn under the real markers, and Tab order over the
+    // map should be stable and meaningful (matching the list), not "whoever
+    // most recently became active" - so every render restacks in one fixed
+    // pass, dim markers first then active markers, both in SORTED_RESORTS
+    // order, rather than lifting individual markers as they change.
+    dimOnes.forEach(function(m){ m.bringToFront(); });
+    activeOnes.forEach(function(m){ m.bringToFront(); });
   }
 
   // ---- size legend (uses the same depthToRadius scale as the map) ----
@@ -457,11 +573,25 @@
   // rebuilds DOM.
   var listEl = document.getElementById('resort-list');
   var byRegion = {};
-  // largest first within each region
-  DATA.resorts.slice().sort(function(a, b){ return (b.run_km || 0) - (a.run_km || 0); })
-    .forEach(function(r){ (byRegion[r.region] = byRegion[r.region]||[]).push(r); });
+  // Same SORTED_RESORTS order the map markers use (region, then largest
+  // first) - one shared order for both, rather than two sorts that could
+  // silently drift apart.
+  SORTED_RESORTS.forEach(function(r){ (byRegion[r.region] = byRegion[r.region]||[]).push(r); });
   var rowEls = {};
   var groupEls = {};
+  var groupItems = {};   // region -> resorts in list order, to put rows back after a ranking
+
+  // A Top-10 list is one flat, rank-ordered run of rows, which the
+  // region-grouped layout can't express. So while a ranking is active its rows
+  // are moved into this box, and moved back when it ends.
+  var rankBox = document.createElement('div');
+  rankBox.className = 'rank-group';
+  rankBox.hidden = true;
+  var rankHeading = document.createElement('div');
+  rankHeading.className = 'region-heading';
+  rankBox.appendChild(rankHeading);
+  listEl.appendChild(rankBox);
+
   REGION_ORDER.forEach(function(region){
     var items = byRegion[region] || [];
     if(!items.length) return;
@@ -479,6 +609,7 @@
     heading.appendChild(headCount);
     group.appendChild(heading);
     groupEls[region] = { root: group, count: headCount };
+    groupItems[region] = items;
     items.forEach(function(r){
       var row = document.createElement('button');
       row.className = 'resort-row';
@@ -489,22 +620,50 @@
       // nodes' textContent, never rebuilds them, so resort data can't
       // break the row's markup no matter what it contains.
       var nameEl = document.createElement('span'); nameEl.className = 'name';
+      var rankEl = document.createElement('span'); rankEl.className = 'rank'; rankEl.hidden = true;
+      var nameTextEl = document.createElement('span'); nameTextEl.className = 'name-text';
       var liveEl = document.createElement('span'); liveEl.className = 'live';
       var peakEl = document.createElement('span'); peakEl.className = 'peak';
       var elevEl = document.createElement('span'); elevEl.className = 'elev';
-      nameEl.textContent = r.name;
+      nameTextEl.textContent = r.name;
+      nameEl.appendChild(rankEl);
+      nameEl.appendChild(nameTextEl);
       row.appendChild(nameEl);
       row.appendChild(liveEl);
       row.appendChild(peakEl);
       row.appendChild(elevEl);
 
       group.appendChild(row);
-      rowEls[r.id] = { root: row, live: liveEl, peak: peakEl, elev: elevEl };
+      rowEls[r.id] = { root: row, live: liveEl, peak: peakEl, elev: elevEl, rank: rankEl };
     });
     listEl.appendChild(group);
   });
 
   var listedCount = 0;
+  var placedRankKey = null; // the ranking currently laid out in rankBox, so unchanged rankings don't re-move rows (which would drop focus)
+
+  function restoreRowsToGroups(){
+    Object.keys(groupItems).forEach(function(region){
+      groupItems[region].forEach(function(r){ groupEls[region].root.appendChild(rowEls[r.id].root); });
+    });
+    DATA.resorts.forEach(function(r){ rowEls[r.id].rank.hidden = true; });
+  }
+
+  function placeRankedRows(){
+    var ids = rankState.ids;
+    var key = ids ? state.ranking + ':' + ids.join(',') : null;
+    if(key === placedRankKey) return;
+    if(placedRankKey !== null) restoreRowsToGroups();
+    placedRankKey = key;
+    rankBox.hidden = !ids || ids.length === 0; // an empty list (no snow anywhere) says so in the status line, not with a bare heading
+    if(!ids) return;
+    ids.forEach(function(id, i){
+      var refs = rowEls[id];
+      refs.rank.textContent = i + 1;
+      refs.rank.hidden = false;
+      rankBox.appendChild(refs.root);
+    });
+  }
 
   function renderList(){
     var ctx = currentCtx();
@@ -512,11 +671,13 @@
     var searching = state.query.trim() !== '';
     var perRegion = {};
     listedCount = 0;
+    placeRankedRows();
 
     DATA.resorts.forEach(function(r){
       var refs = rowEls[r.id];
-      var matchesSearch = searching && matchesQuery(r, state.query);
-      var listed = isListed(classes[r.id], passesFilters(r, ctx), matchesSearch, inView.contains([r.lat, r.lon]), state.mapOnly);
+      var listedAnywhere = (searching && matchesQuery(r, state.query)) ||
+        (!!ctx.rankedIds && ctx.rankedIds.indexOf(r.id) !== -1);
+      var listed = isListed(classes[r.id], passesFilters(r, ctx), listedAnywhere, inView.contains([r.lat, r.lon]), state.mapOnly);
       refs.root.hidden = !listed;
       if(!listed) return;
 
@@ -528,13 +689,27 @@
       refs.peak.textContent = hasCurve(r) ? r.typical_peak_cm + 'cm peak' : '';
       var place = r.prefecture && r.prefecture !== r.region ? r.prefecture + ' · ' : '';
       refs.elev.textContent = place + fmtElevation(r) + ' · ' + disp.temp.toFixed(0) + '°C';
+
+      // Without this, the row's accessible name falls back to its child
+      // text nodes run together with no separators - unlike the marker's
+      // own aria-label, which is already a clean, comma-separated sentence
+      // (UX review). Rebuilt every render since depth/temp change with mode.
+      var labelParts = [r.name, r.region, Math.round(disp.depth) + ' centimeters ' + whenLabel, disp.temp.toFixed(0) + ' degrees'];
+      if(hasCurve(r)) labelParts.push('typical peak ' + r.typical_peak_cm + ' centimeters');
+      if(r.elevation_top_m) labelParts.push(r.elevation_top_m + ' meters elevation');
+      // placeRankedRows() (above) already set refs.rank for this render.
+      if(!refs.rank.hidden) labelParts.push('ranked number ' + refs.rank.textContent);
+      refs.root.setAttribute('aria-label', labelParts.join(', '));
     });
 
     Object.keys(groupEls).forEach(function(region){
       var n = perRegion[region] || 0;
-      groupEls[region].root.hidden = n === 0;
+      // With a ranking active every listed row lives in rankBox, so the
+      // region groups are empty shells whatever the counts say.
+      groupEls[region].root.hidden = n === 0 || !!ctx.rankedIds;
       groupEls[region].count.textContent = n ? ' · ' + n : '';
     });
+    rankHeading.textContent = ctx.rankedIds ? rankTitle() : '';
   }
 
   // ---- filters: search, region chips, size chips, map-view toggle ----
@@ -544,7 +719,9 @@
   var mapOnlyEl = document.getElementById('map-only');
   var clearEl = document.getElementById('clear-filters');
   var statusEl = document.getElementById('filter-status');
-  var regionChips = {}, tierChips = {};
+  var rankingChipsEl = document.getElementById('ranking-chips');
+  var regionChips = {}, tierChips = {}, rankingChips = {};
+  var pendingRankFit = false; // zoom to the new Top 10 once it can be computed
 
   var TIER_LABEL = { major: 'Major', medium: 'Medium', small: 'Small' };
   var TIER_HINT = {
@@ -580,6 +757,34 @@
     tierChips[tier] = makeChip(tierChipsEl, TIER_LABEL[tier], null, function(){ toggleTier(tier); });
     tierChips[tier].root.title = TIER_HINT[tier];
   });
+
+  var RANKING_LABEL = { altitude: 'Highest altitude', snow: 'Snowiest' };
+  var RANKING_HINT = {
+    altitude: 'The 10 resorts with the highest top elevation, among those matching the filters.',
+    snow: 'The 10 resorts with the most snow on the ground right now, among those matching the filters.'
+  };
+  RANKINGS.forEach(function(kind){
+    rankingChips[kind] = makeChip(rankingChipsEl, RANKING_LABEL[kind], null, function(){ toggleRanking(kind); });
+  });
+
+  function rankTitle(){
+    return 'Top ' + TOP_N + (state.ranking === 'snow' ? ' snowiest now' : ' highest altitude');
+  }
+
+  function toggleRanking(kind){
+    var next = state.ranking === kind ? null : kind;
+    pendingRankFit = !!next;
+    setState({ ranking: next });
+  }
+
+  // Once the Top 10 exists (a snow ranking has to wait for live data first),
+  // show where it is.
+  function maybeFitRanking(){
+    if(!state.ranking){ pendingRankFit = false; return; }
+    if(!pendingRankFit || rankState.ids === null) return;
+    pendingRankFit = false;
+    fitTo(DATA.resorts.filter(function(r){ return rankState.ids.indexOf(r.id) !== -1; }));
+  }
 
   function resortsInRegions(regions){
     return DATA.resorts.filter(function(r){ return regions.indexOf(r.region) !== -1 && isEligible(r, state.mode); });
@@ -619,21 +824,29 @@
   mapOnlyEl.addEventListener('change', function(){ setState({ mapOnly: mapOnlyEl.checked }); });
   clearEl.addEventListener('click', function(){
     searchEl.value = '';
-    setState({ regions: [], tiers: TIER_ORDER.slice(), query: '' });
+    pendingRankFit = false;
+    setState({ regions: [], tiers: TIER_ORDER.slice(), query: '', ranking: null });
     fitOverview();
   });
 
   function filtersActive(){
-    return state.regions.length > 0 || state.query.trim() !== '' || state.tiers.length < TIER_ORDER.length;
+    return state.regions.length > 0 || state.query.trim() !== '' || state.tiers.length < TIER_ORDER.length || !!state.ranking;
   }
 
   function renderFilters(){
+    // Each chip's count reflects the OTHER active filters (tier/search for
+    // a region chip, region/search for a tier chip), but never its own
+    // dimension's current selection - a region chip says "how many are in
+    // this region", not "how many more picking it would add". Previously
+    // ignored tiers and search entirely, so e.g. typing a search term left
+    // chip counts identical to the unfiltered totals (UX review).
     REGION_ORDER.forEach(function(region){
       var on = state.regions.indexOf(region) !== -1;
       regionChips[region].root.classList.toggle('is-active', on);
       regionChips[region].root.setAttribute('aria-pressed', on);
       regionChips[region].count.textContent = DATA.resorts.filter(function(r){
-        return r.region === region && isEligible(r, state.mode);
+        return r.region === region && isEligible(r, state.mode) &&
+          state.tiers.indexOf(r.tier) !== -1 && matchesQuery(r, state.query);
       }).length;
     });
     TIER_ORDER.forEach(function(tier){
@@ -641,13 +854,54 @@
       tierChips[tier].root.classList.toggle('is-active', on);
       tierChips[tier].root.setAttribute('aria-pressed', on);
       tierChips[tier].count.textContent = DATA.resorts.filter(function(r){
-        return r.tier === tier && isEligible(r, state.mode);
+        return r.tier === tier && isEligible(r, state.mode) &&
+          (state.regions.length === 0 || state.regions.indexOf(r.region) !== -1) && matchesQuery(r, state.query);
       }).length;
+    });
+    RANKINGS.forEach(function(kind){
+      var on = state.ranking === kind;
+      var blocked = kind === 'snow' && state.mode !== 'live';
+      rankingChips[kind].root.classList.toggle('is-active', on);
+      rankingChips[kind].root.setAttribute('aria-pressed', on);
+      rankingChips[kind].root.disabled = blocked;
+      rankingChips[kind].root.title = blocked ? 'Snowiest is only available in Live now mode: typical-season depths are illustrative, not measured.' : RANKING_HINT[kind];
     });
     clearEl.hidden = !filtersActive();
   }
 
+  function rankingStatus(){
+    var c = rankState.candidates, n = c.length;
+    if(rankState.pending){
+      var waiting = c.filter(function(r){ return !liveDone[r.id]; }).length;
+      return 'Fetching live snow depth for ' + waiting + ' of ' + n + ' resorts\u2026';
+    }
+    var ids = rankState.ids || [];
+    var parts = [];
+    if(state.ranking === 'snow'){
+      if(!ids.length) return 'No resort has snow on the ground right now.';
+      parts.push(rankTitle() + ' of ' + n + ' resorts');
+      if(ids.length < TOP_N) parts.push('only ' + ids.length + ' have any snow');
+      parts.push('depth is modelled on a coarse grid, so neighbours can tie (the higher resort ranks first)');
+      var missing = c.filter(function(r){ return liveFailedIds[r.id]; }).length;
+      if(missing) parts.push('live values are missing for ' + missing + ' resorts, which use the last snapshot');
+    } else {
+      if(!ids.length) return 'No resort matches the filters.';
+      parts.push(rankTitle() + ' of ' + n + ' resorts');
+      var noElevation = c.filter(function(r){ return rankValue(r, 'altitude') === null; }).length;
+      if(noElevation) parts.push(noElevation + ' have no known elevation and are not ranked');
+    }
+    // Same explanation the non-ranking status line gives for why the
+    // candidate pool doesn't already include every resort. In practice this
+    // only fires for altitude - a snow ranking only ever runs in Live mode,
+    // where nothing is mode-excluded - but computed generically so it stays
+    // correct if that changes.
+    var liveOnly = DATA.resorts.length - DATA.resorts.filter(function(r){ return isEligible(r, state.mode); }).length;
+    if(liveOnly > 0) parts.push(liveOnly + ' live-only resorts are hidden in Typical season mode; switch to Live now to see them');
+    return parts.join(' \u00b7 ');
+  }
+
   function renderStatus(){
+    if(state.ranking){ statusEl.textContent = rankingStatus(); return; }
     var eligible = DATA.resorts.filter(function(r){ return isEligible(r, state.mode); }).length;
     var parts = ['Showing ' + listedCount + ' of ' + eligible + ' resorts'];
     if(zoomHeldBack > 0){
@@ -917,17 +1171,20 @@
   // The part of a refresh that depends on the map view (zoom/pan), split out
   // so panning doesn't also redraw the detail chart.
   function refreshMapView(){
+    computeRanking();
     renderMarkers();
     renderList();
     renderFilters();
     renderStatus();
     updateSelectionHighlight();
     scheduleLiveRefresh();
+    maybeFitRanking();
   }
 
   function refreshAll(){
     refreshMapView();
     renderSizeLegend();
+    updateFetchMeta(); // mode-dependent; pointless to redo on every pan, so not in refreshMapView
     var r = DATA.resorts.filter(function(x){ return x.id === state.selectedId; })[0];
     if(r) renderDetail(r);
     updateDateLabel();
@@ -956,7 +1213,8 @@
     modeSeasonBtn.setAttribute('aria-selected', mode === 'season');
     dateRow.style.opacity = mode === 'season' ? '1' : '.35';
     slider.disabled = mode !== 'season';
-    setState({ mode: mode });
+    // Snow depths are only real in Live mode, so leaving it ends a snow ranking.
+    setState(mode !== 'live' && state.ranking === 'snow' ? { mode: mode, ranking: null } : { mode: mode });
   }
   modeLiveBtn.addEventListener('click', function(){ setMode('live'); });
   modeSeasonBtn.addEventListener('click', function(){ setMode('season'); });
@@ -998,6 +1256,8 @@
       hasCurve: hasCurve, fmtElevation: fmtElevation, escapeHtml: escapeHtml,
       isTierRevealed: isTierRevealed, matchesQuery: matchesQuery, passesFilters: passesFilters,
       isEligible: isEligible, classifyResort: classifyResort, isListed: isListed,
-      REGION_ORDER: REGION_ORDER, TIER_ORDER: TIER_ORDER, TIER_MIN_ZOOM: TIER_MIN_ZOOM };
+      rankResorts: rankResorts, isRankingReady: isRankingReady, TOP_N: TOP_N, RANKINGS: RANKINGS,
+      REGION_ORDER: REGION_ORDER, TIER_ORDER: TIER_ORDER, TIER_MIN_ZOOM: TIER_MIN_ZOOM,
+      sortResorts: sortResorts, fetchMetaLabel: fetchMetaLabel };
   }
 })();
