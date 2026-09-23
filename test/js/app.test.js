@@ -367,3 +367,18 @@ test('isListed lists a Top-10 member outside the map view when the flag says it 
   assert.equal(app.isListed('active', true, true, false, true), true);
   assert.equal(app.isListed('active', true, false, false, true), false);
 });
+
+// fetchMetaLabel: the header's fetch-status label. Mode-aware since
+// "LIVE DATA FETCHED" used to show regardless of mode - see the fix in
+// docs/CHANGELOG.md.
+test('fetchMetaLabel: Typical season always reads as a snapshot, regardless of live-fetch outcome', () => {
+  assert.equal(app.fetchMetaLabel('season', true), 'TYPICAL SEASON SHOWN');
+  assert.equal(app.fetchMetaLabel('season', false), 'TYPICAL SEASON SHOWN');
+  assert.equal(app.fetchMetaLabel('season', 'partial'), 'TYPICAL SEASON SHOWN');
+});
+
+test('fetchMetaLabel: Live mode reflects the live-fetch outcome', () => {
+  assert.equal(app.fetchMetaLabel('live', true), 'LIVE DATA FETCHED');
+  assert.equal(app.fetchMetaLabel('live', false), 'SNAPSHOT (LIVE REFRESH FAILED)');
+  assert.equal(app.fetchMetaLabel('live', 'partial'), 'PARTLY LIVE (SOME REFRESHES FAILED)');
+});

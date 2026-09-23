@@ -165,6 +165,18 @@
     return mode === "live" || hasCurve(r);
   }
 
+  // The header's fetch-status label. Mode-aware: "LIVE DATA FETCHED" used to
+  // show regardless of mode, in the most prominent line at the top of the
+  // page, above the banner explaining Typical season is a snapshot - easy to
+  // skim as "what I'm looking at is live" when it isn't (UX review). The
+  // live-fetch outcome only matters to what's on screen when mode is live.
+  function fetchMetaLabel(mode, liveFetchOk){
+    if(mode !== "live") return "TYPICAL SEASON SHOWN";
+    if(liveFetchOk === false) return "SNAPSHOT (LIVE REFRESH FAILED)";
+    if(liveFetchOk === "partial") return "PARTLY LIVE (SOME REFRESHES FAILED)";
+    return "LIVE DATA FETCHED";
+  }
+
   // How a resort should appear on the map right now:
   //   'active' - a normal marker (and a row in the list)
   //   'dim'    - filtered out, but drawn as a faint dot so you keep the
@@ -245,11 +257,9 @@
 
   // ---- header meta ----
   function updateFetchMeta(){
-    var label = "LIVE DATA FETCHED";
-    if(DATA.live_fetch_ok === false) label = "SNAPSHOT (LIVE REFRESH FAILED)";
-    else if(DATA.live_fetch_ok === 'partial') label = "PARTLY LIVE (SOME REFRESHES FAILED)";
     document.getElementById('fetch-meta').innerHTML =
-      label + "<br>" + fmtFetched(DATA.generated_at) + ' JST<br>source: <a href="https://open-meteo.com/">open-meteo.com</a>';
+      fetchMetaLabel(state.mode, DATA.live_fetch_ok) + "<br>" + fmtFetched(DATA.generated_at) +
+      ' JST<br>source: <a href="https://open-meteo.com/">open-meteo.com</a>';
   }
   updateFetchMeta();
 
@@ -679,6 +689,17 @@
       refs.peak.textContent = hasCurve(r) ? r.typical_peak_cm + 'cm peak' : '';
       var place = r.prefecture && r.prefecture !== r.region ? r.prefecture + ' · ' : '';
       refs.elev.textContent = place + fmtElevation(r) + ' · ' + disp.temp.toFixed(0) + '°C';
+
+      // Without this, the row's accessible name falls back to its child
+      // text nodes run together with no separators - unlike the marker's
+      // own aria-label, which is already a clean, comma-separated sentence
+      // (UX review). Rebuilt every render since depth/temp change with mode.
+      var labelParts = [r.name, r.region, Math.round(disp.depth) + ' centimeters ' + whenLabel, disp.temp.toFixed(0) + ' degrees'];
+      if(hasCurve(r)) labelParts.push('typical peak ' + r.typical_peak_cm + ' centimeters');
+      if(r.elevation_top_m) labelParts.push(r.elevation_top_m + ' meters elevation');
+      // placeRankedRows() (above) already set refs.rank for this render.
+      if(!refs.rank.hidden) labelParts.push('ranked number ' + refs.rank.textContent);
+      refs.root.setAttribute('aria-label', labelParts.join(', '));
     });
 
     Object.keys(groupEls).forEach(function(region){
@@ -813,12 +834,19 @@
   }
 
   function renderFilters(){
+    // Each chip's count reflects the OTHER active filters (tier/search for
+    // a region chip, region/search for a tier chip), but never its own
+    // dimension's current selection - a region chip says "how many are in
+    // this region", not "how many more picking it would add". Previously
+    // ignored tiers and search entirely, so e.g. typing a search term left
+    // chip counts identical to the unfiltered totals (UX review).
     REGION_ORDER.forEach(function(region){
       var on = state.regions.indexOf(region) !== -1;
       regionChips[region].root.classList.toggle('is-active', on);
       regionChips[region].root.setAttribute('aria-pressed', on);
       regionChips[region].count.textContent = DATA.resorts.filter(function(r){
-        return r.region === region && isEligible(r, state.mode);
+        return r.region === region && isEligible(r, state.mode) &&
+          state.tiers.indexOf(r.tier) !== -1 && matchesQuery(r, state.query);
       }).length;
     });
     TIER_ORDER.forEach(function(tier){
@@ -826,7 +854,8 @@
       tierChips[tier].root.classList.toggle('is-active', on);
       tierChips[tier].root.setAttribute('aria-pressed', on);
       tierChips[tier].count.textContent = DATA.resorts.filter(function(r){
-        return r.tier === tier && isEligible(r, state.mode);
+        return r.tier === tier && isEligible(r, state.mode) &&
+          (state.regions.length === 0 || state.regions.indexOf(r.region) !== -1) && matchesQuery(r, state.query);
       }).length;
     });
     RANKINGS.forEach(function(kind){
@@ -1155,6 +1184,7 @@
   function refreshAll(){
     refreshMapView();
     renderSizeLegend();
+    updateFetchMeta(); // mode-dependent; pointless to redo on every pan, so not in refreshMapView
     var r = DATA.resorts.filter(function(x){ return x.id === state.selectedId; })[0];
     if(r) renderDetail(r);
     updateDateLabel();
@@ -1228,6 +1258,6 @@
       isEligible: isEligible, classifyResort: classifyResort, isListed: isListed,
       rankResorts: rankResorts, isRankingReady: isRankingReady, TOP_N: TOP_N, RANKINGS: RANKINGS,
       REGION_ORDER: REGION_ORDER, TIER_ORDER: TIER_ORDER, TIER_MIN_ZOOM: TIER_MIN_ZOOM,
-      sortResorts: sortResorts };
+      sortResorts: sortResorts, fetchMetaLabel: fetchMetaLabel };
   }
 })();

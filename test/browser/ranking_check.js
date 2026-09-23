@@ -82,7 +82,18 @@
   if(scenario === 'winter'){
     checkMarkerOrder('initial load, before any interaction');
 
+    check('fetch-meta reads as a snapshot in Typical season mode, not as live data',
+      $('#fetch-meta').textContent.startsWith('TYPICAL SEASON SHOWN'), $('#fetch-meta').textContent);
+
+    const firstRow = document.querySelector('.resort-row:not([hidden])');
+    const rowLabel = firstRow.getAttribute('aria-label') || '';
+    check('a resort row has a proper aria-label (not the run-on default from concatenated child text)',
+      rowLabel.split(', ').length >= 4 && /degrees/.test(rowLabel) && !/cmnow|cmFeb/.test(rowLabel), rowLabel);
+
     live(); await sleep(300);
+    check('fetch-meta switches to live wording once in Live mode',
+      /^LIVE DATA FETCHED|^PARTLY LIVE|^SNAPSHOT \(LIVE/.test($('#fetch-meta').textContent), $('#fetch-meta').textContent);
+
     const snowChip = chip('#ranking-chips', 'Snowiest');
     check('Snowiest chip is enabled in Live mode', !snowChip.disabled);
 
@@ -160,6 +171,17 @@
     check('a ranking is on before clearing', rankBoxVisible());
     $('#clear-filters').click(); await sleep(400);
     check('Clear filters ends the ranking', !rankBoxVisible() && !chip('#ranking-chips', 'Highest').classList.contains('is-active'));
+
+    // -- region/size chip counts reflect the active search text
+    const naeba = data.find((r) => r.name === 'Naeba');
+    const searchEl = $('#resort-search');
+    searchEl.value = 'naeba'; searchEl.dispatchEvent(new Event('input', { bubbles: true })); await sleep(300);
+    const naebaRegionCount = chip('#region-chips', naeba.region).textContent.replace(naeba.region, '').trim();
+    check('a region chip\'s count narrows to match the search text', naebaRegionCount === '1', naebaRegionCount);
+    const otherRegion = naeba.region === 'Hokkaido' ? 'Nagano' : 'Hokkaido';
+    const otherRegionCount = chip('#region-chips', otherRegion).textContent.replace(otherRegion, '').trim();
+    check('a region with no match for the search text shows 0', otherRegionCount === '0', otherRegionCount);
+    searchEl.value = ''; searchEl.dispatchEvent(new Event('input', { bubbles: true })); await sleep(300);
   }
 
   if(scenario === 'failure'){

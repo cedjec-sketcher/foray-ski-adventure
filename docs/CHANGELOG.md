@@ -301,3 +301,43 @@ the reviewing agent's own script having read page state before its "Clear
 filters" click had actually taken effect, rather than a real persistence
 bug. No code change made. Recorded here (rather than silently dropped) so
 a future review doesn't re-flag the same non-bug without this context.
+
+**Fixed the remaining minors and the one polish item (2026-09-22).** The
+last four findings from the same review, all small and independent:
+
+- The fetch-status label ("LIVE DATA FETCHED") used to show regardless of
+  mode, sitting above the banner that explains Typical season is a
+  snapshot - easy to misread on a skim as "the markers I'm looking at are
+  live." Made mode-aware (`fetchMetaLabel`, a small pure function): reads
+  "TYPICAL SEASON SHOWN" outside Live mode, and only shows the live-fetch
+  outcome (fetched / partial / failed) when it's actually relevant to
+  what's on screen.
+- Resort-list rows had no `aria-label`, so their accessible name fell back
+  to concatenated child text with no separators - unlike map markers,
+  which already had a clean one. Rows now get the same kind of formatted
+  label (name, region, current reading, peak, elevation, and rank if a
+  ranking is active), rebuilt each render since the values it depends on
+  change with mode.
+- Region/size chip counts ignored the search box and each other entirely -
+  typing a search term or narrowing by tier left every count unchanged,
+  reading as either broken search or wrong counts. Chip counts now respect
+  the *other* active filters (a region chip's count reflects the current
+  tier selection and search text, and vice versa), while still never
+  gating on the chip's own dimension.
+- The active/inactive states of the Top-10 toggle chips were visually
+  close (a 16%-tint background against an already-dark surface barely
+  read as different). Active chips now use a solid fill with the same
+  accent/accent-ink pairing the rank badges already use elsewhere on the
+  page, instead of a faint tint.
+
+Verified: 4 new unit tests (`fetchMetaLabel`) plus 5 new browser-check
+assertions (mode-aware label switching, a real row `aria-label`, chip
+counts narrowing with a search term) - `rake test` 54/54, the JS suite
+62/62, and all three `test/browser/ranking_check.js` scenarios 49/49
+against the rebuilt page. One methodology note: the first run of the
+browser checks against `tmp/debug.html` showed 4 failures that turned out
+to be the browser caching the HTML page itself from an earlier visit to
+the same URL in this session (confirmed by checking the loaded
+`assets/app.js`'s content hash) - re-running with a cache-busting query
+param on the page URL itself (not just the already-hashed asset URL)
+showed all passing.
