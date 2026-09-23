@@ -33,7 +33,6 @@
       return (b.run_km || 0) - (a.run_km || 0);
     });
   }
-  var MAX_PEAK = 320; // fixed y-domain so charts are comparable across resorts (Hakkoda tops out near 300)
   var DEPTH_DOMAIN = 300; // marker area scale domain
   var TEMP_COLD = -16, TEMP_MID = 0, TEMP_WARM = 20;
   var R_MIN = 6.5, R_MAX = 15;
@@ -352,7 +351,7 @@
   }
 
   // ---- map ----
-  var svgNS = "http://www.w3.org/2000/svg"; // still used by the chart and size-legend SVGs below
+  var svgNS = "http://www.w3.org/2000/svg"; // used by the size-legend SVG below
 
   // scrollWheelZoom is off deliberately: a map embedded in a scrolling page
   // that captures the mouse wheel fights the page scroll the moment the
@@ -910,9 +909,8 @@
     statusEl.textContent = parts.join(' · ');
   }
 
-  // ---- detail / chart ----
+  // ---- detail ----
   var detailCard = document.getElementById('detail-card');
-  var CHART_W = 640, CHART_H = 230, CHART_PAD_L = 34, CHART_PAD_R = 12, CHART_PAD_T = 14, CHART_PAD_B = 26;
 
   function buildDetailSkeleton(){
     detailCard.innerHTML =
@@ -930,166 +928,80 @@
         '</div>' +
       '</div>' +
       '<p class="detail-note" id="d-nocurve" hidden>Live conditions only. This resort has no typical-season pattern yet; those exist for the larger resorts.</p>' +
-      '<div class="chart-wrap" style="position:relative;">' +
-        '<svg id="chart-svg" class="chart-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + CHART_W + ' ' + CHART_H + '" role="img" aria-labelledby="chart-desc"></svg>' +
-        '<div class="chart-tooltip" id="chart-tooltip"></div>' +
-      '</div>' +
-      '<p class="chart-figure-note" id="chart-desc"></p>' +
-      '<details class="figures"><summary>Show monthly figures</summary><div id="figures-table"></div></details>';
+      '<div class="forecast">' +
+        '<p class="section-label">7-day forecast</p>' +
+        '<div id="forecast-body"><p class="detail-note">Loading forecast…</p></div>' +
+      '</div>';
   }
   buildDetailSkeleton();
 
-  function yFor(v){ return CHART_PAD_T + (1 - v/MAX_PEAK) * (CHART_H - CHART_PAD_T - CHART_PAD_B); }
-  function xFor(i, n){ return CHART_PAD_L + (i/(n-1)) * (CHART_W - CHART_PAD_L - CHART_PAD_R); }
+  // ---- 7-day forecast ----
+  // Real near-term weather from Open-Meteo (the same source the live
+  // conditions come from), fetched once per resort per page view and
+  // cached — this is what replaced the illustrative typical-season chart,
+  // which looked like real data but wasn't (see CHANGELOG.md).
+  var WEATHER_LABEL = {
+    0:"Clear", 1:"Mostly clear", 2:"Partly cloudy", 3:"Overcast",
+    45:"Fog", 48:"Fog",
+    51:"Light drizzle", 53:"Drizzle", 55:"Heavy drizzle",
+    56:"Freezing drizzle", 57:"Freezing drizzle",
+    61:"Light rain", 63:"Rain", 65:"Heavy rain",
+    66:"Freezing rain", 67:"Freezing rain",
+    71:"Light snow", 73:"Snow", 75:"Heavy snow", 77:"Snow grains",
+    80:"Rain showers", 81:"Rain showers", 82:"Heavy rain showers",
+    85:"Snow showers", 86:"Heavy snow showers",
+    95:"Thunderstorm", 96:"Thunderstorm", 99:"Thunderstorm"
+  };
+  function weatherLabel(code){ return WEATHER_LABEL[code] || "—"; }
 
-  function renderChart(r){
-    var chartSvg = document.getElementById('chart-svg');
-    chartSvg.innerHTML = '';
-    var curve = r.typical_season_cm;
-    var n = curve.length;
-    var color = regionColor(r.region);
+  var FORECAST_DAYS = 7;
+  var forecastCache = {}; // resort id -> array of day objects, or 'failed'
+  var forecastToken = 0;  // bumped on every fetch so a stale response can't clobber a newer one
+  var lastForecastId = null;
 
-    [0,100,200,300].forEach(function(gv){
-      if(gv > MAX_PEAK) return;
-      var y = yFor(gv);
-      var line = document.createElementNS(svgNS,'line');
-      line.setAttribute('class','gridline');
-      line.setAttribute('x1', CHART_PAD_L); line.setAttribute('x2', CHART_W - CHART_PAD_R);
-      line.setAttribute('y1', y); line.setAttribute('y2', y);
-      chartSvg.appendChild(line);
-      var lbl = document.createElementNS(svgNS,'text');
-      lbl.setAttribute('class','axis-label');
-      lbl.setAttribute('x', 4); lbl.setAttribute('y', y+3);
-      lbl.textContent = gv;
-      chartSvg.appendChild(lbl);
-    });
-
-    var months = [["2025-12-01","Dec"],["2026-01-01","Jan"],["2026-02-01","Feb"],["2026-03-01","Mar"],["2026-04-01","Apr"]];
-    months.forEach(function(m){
-      var idx = curve.findIndex(function(pt){ return pt[0] >= m[0]; });
-      if(idx < 0) idx = 0;
-      var x = xFor(idx, n);
-      var lbl = document.createElementNS(svgNS,'text');
-      lbl.setAttribute('class','axis-label');
-      lbl.setAttribute('x', x); lbl.setAttribute('y', CHART_H - 8);
-      lbl.setAttribute('text-anchor','middle');
-      lbl.textContent = m[1];
-      chartSvg.appendChild(lbl);
-    });
-
-    var pts = curve.map(function(pt,i){ return [xFor(i,n), yFor(pt[1])]; });
-    var linePath = "M " + pts.map(function(p){ return p[0].toFixed(1)+","+p[1].toFixed(1); }).join(" L ");
-    var baseY = yFor(0);
-    var areaPath = linePath + " L " + pts[pts.length-1][0].toFixed(1) + "," + baseY + " L " + pts[0][0].toFixed(1) + "," + baseY + " Z";
-
-    var gradId = "grad-" + r.id;
-    var defs = document.createElementNS(svgNS,'defs');
-    var grad = document.createElementNS(svgNS,'linearGradient');
-    grad.setAttribute('id', gradId); grad.setAttribute('x1','0'); grad.setAttribute('y1','0'); grad.setAttribute('x2','0'); grad.setAttribute('y2','1');
-    var s1 = document.createElementNS(svgNS,'stop'); s1.setAttribute('offset','0%'); s1.setAttribute('stop-color', color); s1.setAttribute('stop-opacity','0.5');
-    var s2 = document.createElementNS(svgNS,'stop'); s2.setAttribute('offset','100%'); s2.setAttribute('stop-color', color); s2.setAttribute('stop-opacity','0');
-    grad.appendChild(s1); grad.appendChild(s2); defs.appendChild(grad); chartSvg.appendChild(defs);
-
-    var area = document.createElementNS(svgNS,'path');
-    area.setAttribute('d', areaPath); area.setAttribute('fill', 'url(#'+gradId+')'); area.setAttribute('class','area');
-    chartSvg.appendChild(area);
-
-    var line = document.createElementNS(svgNS,'path');
-    line.setAttribute('d', linePath); line.setAttribute('class','line'); line.setAttribute('stroke', color);
-    chartSvg.appendChild(line);
-
-    var peakIdx = curve.reduce(function(best,pt,i){ return pt[1] > curve[best][1] ? i : best; }, 0);
-    var peakPt = pts[peakIdx];
-    var peakDot = document.createElementNS(svgNS,'circle');
-    peakDot.setAttribute('cx', peakPt[0]); peakDot.setAttribute('cy', peakPt[1]); peakDot.setAttribute('r', 4);
-    peakDot.setAttribute('fill', color);
-    chartSvg.appendChild(peakDot);
-    var peakLbl = document.createElementNS(svgNS,'text');
-    peakLbl.setAttribute('class','peak-label');
-    peakLbl.setAttribute('x', Math.min(peakPt[0]+8, CHART_W - CHART_PAD_R - 92));
-    peakLbl.setAttribute('y', peakPt[1] - 10);
-    peakLbl.textContent = r.typical_peak_cm + "cm peak, mid-Feb";
-    chartSvg.appendChild(peakLbl);
-
-    if(state.mode === 'season'){
-      var posPt = pts[state.dayIndex];
-      var posLine = document.createElementNS(svgNS,'line');
-      posLine.setAttribute('class','position-line');
-      posLine.setAttribute('x1', posPt[0]); posLine.setAttribute('x2', posPt[0]);
-      posLine.setAttribute('y1', CHART_PAD_T); posLine.setAttribute('y2', CHART_H - CHART_PAD_B);
-      chartSvg.appendChild(posLine);
-      var posDot = document.createElementNS(svgNS,'circle');
-      posDot.setAttribute('cx', posPt[0]); posDot.setAttribute('cy', posPt[1]); posDot.setAttribute('r', 4.5);
-      posDot.setAttribute('fill', cssVar('--surface')); posDot.setAttribute('stroke', cssVar('--accent')); posDot.setAttribute('stroke-width', 2.2);
-      chartSvg.appendChild(posDot);
-      if(state.dayIndex !== peakIdx){
-        var posLbl = document.createElementNS(svgNS,'text');
-        posLbl.setAttribute('class','position-label');
-        var lx = posPt[0] + (posPt[0] > CHART_W*0.6 ? -8 : 8);
-        posLbl.setAttribute('x', lx); posLbl.setAttribute('y', posPt[1] - 10);
-        posLbl.setAttribute('text-anchor', posPt[0] > CHART_W*0.6 ? 'end' : 'start');
-        posLbl.textContent = "viewing " + Math.round(curve[state.dayIndex][1]) + "cm";
-        chartSvg.appendChild(posLbl);
-      }
-    }
-
-    var crossLine = document.createElementNS(svgNS,'line');
-    crossLine.setAttribute('class','crosshair-line');
-    crossLine.setAttribute('y1', CHART_PAD_T); crossLine.setAttribute('y2', CHART_H - CHART_PAD_B);
-    crossLine.style.display = 'none';
-    chartSvg.appendChild(crossLine);
-    var hoverDot = document.createElementNS(svgNS,'circle');
-    hoverDot.setAttribute('class','hover-dot'); hoverDot.setAttribute('r', 4.5);
-    hoverDot.setAttribute('stroke', color);
-    hoverDot.style.display = 'none';
-    chartSvg.appendChild(hoverDot);
-
-    var hit = document.createElementNS(svgNS,'rect');
-    hit.setAttribute('class','chart-hit');
-    hit.setAttribute('x', CHART_PAD_L); hit.setAttribute('y', 0);
-    hit.setAttribute('width', CHART_W - CHART_PAD_L - CHART_PAD_R); hit.setAttribute('height', CHART_H);
-    chartSvg.appendChild(hit);
-
-    var tooltip = document.getElementById('chart-tooltip');
-    function pointerToIndex(clientX){
-      var box = chartSvg.getBoundingClientRect();
-      var svgX = (clientX - box.left) / box.width * CHART_W;
-      var t = (svgX - CHART_PAD_L) / (CHART_W - CHART_PAD_L - CHART_PAD_R);
-      var idx = Math.round(t * (n-1));
-      return Math.max(0, Math.min(n-1, idx));
-    }
-    function moveHover(e){
-      var idx = pointerToIndex(e.clientX);
-      var p = pts[idx];
-      crossLine.setAttribute('x1', p[0]); crossLine.setAttribute('x2', p[0]);
-      crossLine.style.display = '';
-      hoverDot.setAttribute('cx', p[0]); hoverDot.setAttribute('cy', p[1]);
-      hoverDot.style.display = '';
-      var box = chartSvg.getBoundingClientRect();
-      var pxX = box.left + (p[0]/CHART_W) * box.width;
-      var pxY = box.top + (p[1]/CHART_H) * box.height;
-      var wrap = chartSvg.parentElement.getBoundingClientRect();
-      tooltip.style.left = (pxX - wrap.left) + "px";
-      tooltip.style.top = (pxY - wrap.top) + "px";
-      tooltip.innerHTML = fmtDate(curve[idx][0]) + "<br><b>" + curve[idx][1].toFixed(0) + " cm</b>";
-      tooltip.classList.add('visible');
-    }
-    hit.addEventListener('mousemove', moveHover);
-    hit.addEventListener('mouseleave', function(){
-      crossLine.style.display = 'none'; hoverDot.style.display = 'none'; tooltip.classList.remove('visible');
+  function showForecast(r){
+    lastForecastId = r.id;
+    var cached = forecastCache[r.id];
+    if(cached){ renderForecastBody(cached); return; }
+    document.getElementById('forecast-body').innerHTML = '<p class="detail-note">Loading forecast…</p>';
+    var myToken = ++forecastToken;
+    var url = "https://api.open-meteo.com/v1/forecast?latitude=" + r.lat + "&longitude=" + r.lon +
+      "&daily=temperature_2m_max,temperature_2m_min,snowfall_sum,weather_code&timezone=Asia%2FTokyo" +
+      "&forecast_days=" + FORECAST_DAYS;
+    fetch(url).then(function(res){
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function(data){
+      var d = data.daily;
+      var days = d.time.map(function(date, i){
+        return { date: date, tMax: d.temperature_2m_max[i], tMin: d.temperature_2m_min[i],
+                  snow: d.snowfall_sum[i], code: d.weather_code[i] };
+      });
+      forecastCache[r.id] = days;
+      if(myToken === forecastToken) renderForecastBody(days);
+    }).catch(function(err){
+      console.warn("Forecast fetch failed for " + r.id + ":", err);
+      forecastCache[r.id] = 'failed';
+      if(myToken === forecastToken) renderForecastBody('failed');
     });
   }
 
-  function renderFigures(r){
-    var checkpoints = ["2025-12-15","2026-01-15","2026-02-14","2026-03-15","2026-04-15"];
-    var rows = checkpoints.map(function(cp){
-      var closest = r.typical_season_cm.reduce(function(best,pt){
-        return Math.abs(new Date(pt[0])-new Date(cp)) < Math.abs(new Date(best[0])-new Date(cp)) ? pt : best;
-      });
-      return "<tr><td>" + fmtDate(closest[0]) + "</td><td>" + closest[1].toFixed(0) + " cm</td></tr>";
-    }).join("");
-    document.getElementById('figures-table').innerHTML =
-      '<table class="figures-table"><thead><tr><th>Date</th><th>Typical depth</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  function renderForecastBody(days){
+    var body = document.getElementById('forecast-body');
+    if(days === 'failed'){
+      body.innerHTML = '<p class="detail-note">Forecast unavailable right now.</p>';
+      return;
+    }
+    var rows = days.map(function(d){
+      var snowCell = d.snow > 0 ? d.snow.toFixed(1) + " cm" : "—";
+      return '<tr><td>' + fmtDate(d.date) + '</td><td>' + weatherLabel(d.code) + '</td>' +
+        '<td>' + Math.round(d.tMax) + '&deg;/' + Math.round(d.tMin) + '&deg;</td>' +
+        '<td>' + snowCell + '</td></tr>';
+    }).join('');
+    body.innerHTML =
+      '<table class="forecast-table"><thead><tr><th>Day</th><th>Weather</th><th>Temp</th><th>New snow</th></tr></thead><tbody>' +
+      rows + '</tbody></table>' +
+      '<p class="detail-note">Forecast from <a href="https://open-meteo.com/">Open-Meteo</a>, fetched live for this resort.</p>';
   }
 
   function renderDetail(r){
@@ -1111,16 +1023,7 @@
     document.getElementById('d-runs').textContent = r.run_km ? r.run_km + " km" : "";
 
     document.getElementById('d-nocurve').hidden = curved;
-    detailCard.querySelector('.chart-wrap').hidden = !curved;
-    document.getElementById('chart-desc').hidden = !curved;
-    detailCard.querySelector('details.figures').hidden = !curved;
-    if(!curved) return;
-
-    renderChart(r);
-    renderFigures(r);
-    document.getElementById('chart-desc').textContent =
-      "Illustrative typical-season pattern for " + r.name + ": snowpack builds through December, peaks around " +
-      r.typical_peak_cm + "cm in mid-February, and melts out by late April.";
+    if(r.id !== lastForecastId) showForecast(r);
   }
 
   // Every state change goes through here, so "changed state but forgot to
