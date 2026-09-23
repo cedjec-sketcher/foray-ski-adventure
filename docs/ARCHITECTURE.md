@@ -112,7 +112,8 @@ map's current zoom and bounds:
 | `rankResorts(resorts, ranking, n)` | Pure. Top-n ids by `altitude` or `snow`, ties broken deterministically |
 | `computeRanking()` / `isRankingReady(...)` | Recomputes the active ranking's ids from the current filters each refresh; `snow` waits until every candidate resort has been live-refreshed (or given up on) before ranking, so it's never a mix of fresh and stale depths |
 | `placeRankedRows()` | Moves the ranked rows into one flat, numbered list box, swapped back into their region groups when the ranking ends |
-| `renderMarkers()` | Adds/removes each `circleMarker` from a layer group by its class, and styles the visible ones via `setStyle()` |
+| `renderMarkers()` | Adds/removes each `circleMarker` from a layer group by its class, styles the visible ones via `setStyle()`, and restacks dim/active markers in one pass in a fixed order (see "Marker DOM/Tab order" below) |
+| `sortResorts(resorts)` | Pure. The one order shared by the list and the map markers' DOM order |
 | `renderList()` | Shows/hides each resort's pre-built row with `hidden`, and updates the visible rows' child `<span>`s via `.textContent` |
 | `renderFilters()` / `renderStatus()` | Chip on/off state and counts; the "Showing N of M" line |
 | `refreshMapView()` | The map-view-dependent part of a refresh (markers, list, filters, status, live refresh), run on every map `moveend` so panning doesn't also redraw the detail chart |
@@ -309,6 +310,22 @@ only shown or hidden.
 - **Marker DOM elements are recreated whenever a marker is re-added to the
   map**, so the keyboard/ARIA wiring runs after each add rather than once,
   and the `is-selected` class is re-applied on every refresh.
+- **Marker DOM/Tab order is a fixed, shared sort, restacked in one pass —
+  not built up by moving individual markers as they change.** Markers are
+  created once, in `sortResorts()`'s order (region, then largest first —
+  the same order the resort list groups itself in), and `renderMarkers()`
+  never moves a single marker in isolation. Instead every render collects
+  the currently-dim and currently-active markers (in that same fixed order)
+  and restacks each group in one pass, dim first then active, so "active
+  draws over dim" still holds without DOM order depending on interaction
+  history. The earlier version called `bringToFront()` per marker the
+  moment it became active, which — since that fires on nearly every
+  marker's first activation — left Tab order as "whichever markers most
+  recently activated," bouncing between regions with no pattern and
+  reshuffling again on the next filter/zoom/search change. Caught by the
+  UX-specialist review (`docs/UX_FINDINGS.md`); see `docs/CHANGELOG.md`,
+  "UX" for the fix and how it was verified (reverting to the original code
+  and confirming two new automated checks fail against it).
 - **`[hidden]` needs help.** Rows and groups use `display:grid`/`flex`, which
   beats the `hidden` attribute's default `display:none`, so the stylesheet
   restates it (`.resort-row[hidden]{display:none}`). Without that, "hidden"

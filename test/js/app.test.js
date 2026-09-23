@@ -248,6 +248,34 @@ test('REGION_ORDER lists the seven regions north to south', () => {
   assert.deepEqual(app.REGION_ORDER, ['Hokkaido', 'Tohoku', 'Kanto', 'Niigata', 'Nagano', 'Chubu', 'Western Japan']);
 });
 
+// sortResorts is the one order shared by the resort list and the map
+// markers' DOM order (so keyboard Tab order matches the list) - see the
+// "Keyboard Tab order" fix in docs/CHANGELOG.md.
+const sr = (id, region, run) => ({ id, name: id, region, run_km: run });
+
+test('sortResorts groups by REGION_ORDER, largest run_km first within a region', () => {
+  const input = [sr('a', 'Nagano', 5), sr('b', 'Hokkaido', 1), sr('c', 'Nagano', 20), sr('d', 'Hokkaido', 50)];
+  const sorted = app.sortResorts(input).map((r) => r.id);
+  assert.deepEqual(sorted, ['d', 'b', 'c', 'a']);
+});
+
+test('sortResorts treats a missing run_km as 0, not as sorting last unpredictably', () => {
+  const input = [sr('a', 'Hokkaido', undefined), sr('b', 'Hokkaido', 5)];
+  assert.deepEqual(app.sortResorts(input).map((r) => r.id), ['b', 'a']);
+});
+
+test('sortResorts does not mutate its input array', () => {
+  const input = [sr('a', 'Nagano', 1), sr('b', 'Hokkaido', 1)];
+  const before = input.map((r) => r.id);
+  app.sortResorts(input);
+  assert.deepEqual(input.map((r) => r.id), before);
+});
+
+test('sortResorts is stable: equal region and run_km keep their original relative order', () => {
+  const input = [sr('a', 'Hokkaido', 10), sr('b', 'Hokkaido', 10), sr('c', 'Hokkaido', 10)];
+  assert.deepEqual(app.sortResorts(input).map((r) => r.id), ['a', 'b', 'c']);
+});
+
 // ---- Top-10 rankings ----
 const rk = (id, snow, elev, run) => ({ id, name: id, region: 'Nagano', prefecture: 'Nagano', tier: 'small',
   snow_depth_cm: snow, elevation_top_m: elev, run_km: run || 0 });

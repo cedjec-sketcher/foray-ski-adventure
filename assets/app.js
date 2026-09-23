@@ -19,6 +19,20 @@
   // "Top N" lists: which measure ranks, and how many places it shows.
   var TOP_N = 10;
   var RANKINGS = ["altitude","snow"];
+
+  // The one fixed resort order used for BOTH the list (grouped by region
+  // under REGION_ORDER headings) and the map markers' DOM order (so Tab
+  // order on the map follows the same order a sighted user reads the list
+  // in, rather than data/resorts.json's raw storage order). Computed once;
+  // never re-sorted at runtime, so it stays a stable Tab order regardless
+  // of which markers happen to be active/dim/hidden right now.
+  function sortResorts(resorts){
+    return resorts.slice().sort(function(a, b){
+      var ra = REGION_ORDER.indexOf(a.region), rb = REGION_ORDER.indexOf(b.region);
+      if(ra !== rb) return ra - rb;
+      return (b.run_km || 0) - (a.run_km || 0);
+    });
+  }
   var MAX_PEAK = 320; // fixed y-domain so charts are comparable across resorts (Hakkoda tops out near 300)
   var DEPTH_DOMAIN = 300; // marker area scale domain
   var TEMP_COLD = -16, TEMP_MID = 0, TEMP_WARM = 20;
@@ -370,7 +384,11 @@
   var markerLayer = L.layerGroup().addTo(map);
   var markerEls = {};
   var classes = {};       // id -> 'active' | 'dim' | 'hidden', from the last renderMarkers()
-  DATA.resorts.forEach(function(r){
+  // The list's own order (region, then size), reused for the markers' DOM
+  // order too, so keyboard Tab order over the map follows the same order a
+  // sighted user reads the list in - see renderMarkers()'s bulk restacking.
+  var SORTED_RESORTS = sortResorts(DATA.resorts);
+  SORTED_RESORTS.forEach(function(r){
     var m = L.circleMarker([r.lat, r.lon], { className: 'marker' });
     m.on('click', function(){ select(r.id); });
     m.on('mouseover', function(e){ showMapTip(e.originalEvent, r); });
@@ -448,11 +466,11 @@
     var cold = cssVar('--temp-cold'), mid = cssVar('--temp-mid'), warm = cssVar('--temp-warm');
     var surface = cssVar('--surface'), faint = cssVar('--ink-3');
     zoomHeldBack = 0;
+    var dimOnes = [], activeOnes = []; // built in SORTED_RESORTS order, restacked at the end
 
-    DATA.resorts.forEach(function(r){
+    SORTED_RESORTS.forEach(function(r){
       var m = markerEls[r.id];
       var cls = classifyResort(r, ctx);
-      var before = classes[r.id];
       classes[r.id] = cls;
 
       if(cls === 'hidden'){
@@ -471,6 +489,7 @@
           el.setAttribute('aria-hidden', 'true');
           el.removeAttribute('aria-label');
         }
+        dimOnes.push(m);
         return;
       }
 
@@ -488,10 +507,16 @@
         el.removeAttribute('aria-hidden');
         el.setAttribute('aria-label', r.name + ", " + r.region + ", " + Math.round(disp.depth) + " centimeters, " + disp.temp.toFixed(0) + " degrees");
       }
-      // Faint dots are drawn under the real markers: lift a marker the
-      // moment it becomes active, not on every redraw (each is a DOM move).
-      if(before !== 'active') m.bringToFront();
+      activeOnes.push(m);
     });
+
+    // Faint dots are drawn under the real markers, and Tab order over the
+    // map should be stable and meaningful (matching the list), not "whoever
+    // most recently became active" - so every render restacks in one fixed
+    // pass, dim markers first then active markers, both in SORTED_RESORTS
+    // order, rather than lifting individual markers as they change.
+    dimOnes.forEach(function(m){ m.bringToFront(); });
+    activeOnes.forEach(function(m){ m.bringToFront(); });
   }
 
   // ---- size legend (uses the same depthToRadius scale as the map) ----
@@ -538,9 +563,10 @@
   // rebuilds DOM.
   var listEl = document.getElementById('resort-list');
   var byRegion = {};
-  // largest first within each region
-  DATA.resorts.slice().sort(function(a, b){ return (b.run_km || 0) - (a.run_km || 0); })
-    .forEach(function(r){ (byRegion[r.region] = byRegion[r.region]||[]).push(r); });
+  // Same SORTED_RESORTS order the map markers use (region, then largest
+  // first) - one shared order for both, rather than two sorts that could
+  // silently drift apart.
+  SORTED_RESORTS.forEach(function(r){ (byRegion[r.region] = byRegion[r.region]||[]).push(r); });
   var rowEls = {};
   var groupEls = {};
   var groupItems = {};   // region -> resorts in list order, to put rows back after a ranking
@@ -835,6 +861,13 @@
       var noElevation = c.filter(function(r){ return rankValue(r, 'altitude') === null; }).length;
       if(noElevation) parts.push(noElevation + ' have no known elevation and are not ranked');
     }
+    // Same explanation the non-ranking status line gives for why the
+    // candidate pool doesn't already include every resort. In practice this
+    // only fires for altitude - a snow ranking only ever runs in Live mode,
+    // where nothing is mode-excluded - but computed generically so it stays
+    // correct if that changes.
+    var liveOnly = DATA.resorts.length - DATA.resorts.filter(function(r){ return isEligible(r, state.mode); }).length;
+    if(liveOnly > 0) parts.push(liveOnly + ' live-only resorts are hidden in Typical season mode; switch to Live now to see them');
     return parts.join(' \u00b7 ');
   }
 
@@ -1194,6 +1227,7 @@
       isTierRevealed: isTierRevealed, matchesQuery: matchesQuery, passesFilters: passesFilters,
       isEligible: isEligible, classifyResort: classifyResort, isListed: isListed,
       rankResorts: rankResorts, isRankingReady: isRankingReady, TOP_N: TOP_N, RANKINGS: RANKINGS,
-      REGION_ORDER: REGION_ORDER, TIER_ORDER: TIER_ORDER, TIER_MIN_ZOOM: TIER_MIN_ZOOM };
+      REGION_ORDER: REGION_ORDER, TIER_ORDER: TIER_ORDER, TIER_MIN_ZOOM: TIER_MIN_ZOOM,
+      sortResorts: sortResorts };
   }
 })();

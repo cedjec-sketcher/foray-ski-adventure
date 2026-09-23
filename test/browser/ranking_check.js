@@ -60,10 +60,28 @@
     .sort((a, b) => b.elevation_top_m - a.elevation_top_m || (b.run_km || 0) - (a.run_km || 0) || byId(a, b))
     .slice(0, 10).map((r) => r.name);
 
+  // Marker DOM/Tab order should always match the list's own order (region,
+  // then largest first) - computed independently here, not by calling the
+  // app's own sortResorts, so this actually checks the rendered DOM rather
+  // than checking the app against itself. See the "Keyboard Tab order" fix
+  // in docs/CHANGELOG.md.
+  const REGION_ORDER = ['Hokkaido', 'Tohoku', 'Kanto', 'Niigata', 'Nagano', 'Chubu', 'Western Japan'];
+  const domMarkerOrder = () => [...document.querySelectorAll('path.marker:not(.marker-dim)')]
+    .map((el) => el.getAttribute('aria-label').split(',')[0]);
+  const expectedOrderFor = (names) => data.filter((r) => names.includes(r.name)).slice()
+    .sort((a, b) => REGION_ORDER.indexOf(a.region) - REGION_ORDER.indexOf(b.region) || (b.run_km || 0) - (a.run_km || 0))
+    .map((r) => r.name);
+  const checkMarkerOrder = (label) => {
+    const got = domMarkerOrder();
+    check('marker DOM/Tab order (' + label + ') matches region+size order', same(got, expectedOrderFor(got)), got);
+  };
+
   await sleep(700); // the page's own first live refresh (the 27 major resorts)
   const scenario = q.has('mockFail') ? 'failure' : (q.get('mockDepth') === '0' ? 'off-season' : 'winter');
 
   if(scenario === 'winter'){
+    checkMarkerOrder('initial load, before any interaction');
+
     live(); await sleep(300);
     const snowChip = chip('#ranking-chips', 'Snowiest');
     check('Snowiest chip is enabled in Live mode', !snowChip.disabled);
@@ -120,6 +138,13 @@
     check('typical season: altitude ranks only resorts with a typical-season curve', same(names(), wantAltSeason), { got: names(), want: wantAltSeason });
     check('typical season: Snowiest is disabled', chip('#ranking-chips', 'Snowiest').disabled);
     check('typical season: Highest altitude stays on', chip('#ranking-chips', 'Highest').classList.contains('is-active'));
+    const liveOnlyCount = data.length - data.filter((r) => r.typical_season_cm).length;
+    check('typical season: ranking status still explains why live-only resorts are excluded',
+      new RegExp(liveOnlyCount + ' live-only resorts are hidden in Typical season mode').test(status()), status());
+
+    // Several filter/ranking/mode transitions have happened by this point -
+    // exactly the history that used to leave marker DOM order scrambled.
+    checkMarkerOrder('after several filter/ranking/mode transitions');
 
     // -- switching the ranking, then leaving Live mode ends a snow ranking
     live(); await sleep(300);

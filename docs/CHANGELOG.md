@@ -253,3 +253,51 @@ before, 378 and one column (358px) after. Manually narrowing a desktop
 browser window doesn't reproduce this — desktop browsers always use the
 real window width, which is why the bug went unnoticed despite the
 responsive CSS (chip wrapping, list height cap) already being in place.
+
+**Fixed keyboard Tab order over the map markers (2026-09-22).** The
+[major] finding from the same review: Tab order over the ~27-477 markers
+didn't follow anything meaningful (region, the list order, geography) — it
+bounced between regions with no pattern. Root cause: `renderMarkers()`
+called `m.bringToFront()` (a real DOM move in Leaflet's SVG renderer)
+whenever a marker went from not-active to active, which fires on
+essentially every marker's first activation. DOM/Tab order ended up as
+"whichever markers most recently activated, in whichever order
+`renderMarkers` iterated them" — `data/resorts.json`'s raw storage order —
+and could reshuffle again on the next filter/zoom/search/ranking change.
+Fixed by separating Tab order from paint order: markers are now created
+once, in a new shared `sortResorts()` order (region, then largest first —
+the same order the resort list already uses, so map Tab order now matches
+what a sighted user reads in the list), and instead of moving individual
+markers on every state change, `renderMarkers()` does one full, sorted
+restack every render — every currently-dim marker first, then every
+currently-active marker, both in that same fixed order — so "active draws
+over dim" still holds, but DOM order is always this one stable, meaningful
+order rather than recency-dependent. Verified the fix actually addresses
+the reported bug, not just a symptom: reverted to the exact original
+`renderMarkers()` and confirmed two new automated checks (DOM/Tab order
+compared against an independently-computed expected order, both at initial
+load and after a run of filter/ranking/mode changes) correctly fail against
+it, then pass again once reverted back.
+
+**Fixed the Top-10 ranking status dropping its "why" explanation
+(2026-09-22).** The other [major] finding: the non-ranking status line
+explains *why* the candidate pool is only 27 of 477 resorts ("... hidden in
+Typical season mode; switch to Live now to see them"), but activating a
+ranking replaced that with a bare "Top 10 highest altitude of 27 resorts,"
+dropping the one sentence that explains the count right when it mattered
+most. `rankingStatus()` simply never included it. Fixed by appending the
+same sentence there too.
+
+**Investigated, could not reproduce: stale Top-10 rank badges after
+"Clear filters" (2026-09-22).** The UX review's third [major] finding
+described rank-number badges persisting on resort rows after clearing an
+active ranking. Traced the relevant code (`placeRankedRows`/
+`restoreRowsToGroups`) and found nothing that could produce that: clearing
+unconditionally hides every row's badge. Reproduced neither the literal
+2-step repro from the report nor a longer multi-ranking/search/clear
+sequence, twice each, against the unmodified code. The reported badge
+numbers exactly matched a live "Highest altitude" result, which points at
+the reviewing agent's own script having read page state before its "Clear
+filters" click had actually taken effect, rather than a real persistence
+bug. No code change made. Recorded here (rather than silently dropped) so
+a future review doesn't re-flag the same non-bug without this context.
