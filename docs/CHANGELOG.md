@@ -369,3 +369,14 @@ suite (62/62) and all three `test/browser/ranking_check.js` scenarios
 logic those already check were unaffected. Also updated the resort-list
 card's own subtitle ("... typical peak for reference"), which had gone
 stale the moment peak stopped being shown there.
+
+**Reverted the elevation-emphasis part of the above (2026-09-23).** After
+looking at the Highest-altitude ranking with elevation promoted to a
+large/bold figure, the owner felt it looked worse than the plain small text
+it replaced - kept the peak removal, dropped the emphasis. Elevation is
+now always shown the same simple way it was before any of this (small text
+on the row's second line, next to temperature), for every ranking and no
+ranking alike; the `.highlight`/`.peak` slot and its ranking-conditional
+logic in `renderList()` are removed entirely rather than left unused, since
+nothing sets it anymore. Verified the same way: rebuilt page, screenshot,
+`rake test` 54/54, JS suite 62/62, all three browser-check scenarios 49/49.
