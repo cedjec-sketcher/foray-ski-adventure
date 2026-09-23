@@ -623,18 +623,16 @@
       var rankEl = document.createElement('span'); rankEl.className = 'rank'; rankEl.hidden = true;
       var nameTextEl = document.createElement('span'); nameTextEl.className = 'name-text';
       var liveEl = document.createElement('span'); liveEl.className = 'live';
-      var peakEl = document.createElement('span'); peakEl.className = 'peak';
       var elevEl = document.createElement('span'); elevEl.className = 'elev';
       nameTextEl.textContent = r.name;
       nameEl.appendChild(rankEl);
       nameEl.appendChild(nameTextEl);
       row.appendChild(nameEl);
       row.appendChild(liveEl);
-      row.appendChild(peakEl);
       row.appendChild(elevEl);
 
       group.appendChild(row);
-      rowEls[r.id] = { root: row, live: liveEl, peak: peakEl, elev: elevEl, rank: rankEl };
+      rowEls[r.id] = { root: row, live: liveEl, elev: elevEl, rank: rankEl };
     });
     listEl.appendChild(group);
   });
@@ -686,7 +684,6 @@
       var disp = getDisplay(r);
       var whenLabel = (state.mode === 'live' || !hasCurve(r)) ? 'now' : fmtDate(DATES[state.dayIndex]);
       refs.live.textContent = Math.round(disp.depth) + 'cm ' + whenLabel;
-      refs.peak.textContent = hasCurve(r) ? r.typical_peak_cm + 'cm peak' : '';
       var place = r.prefecture && r.prefecture !== r.region ? r.prefecture + ' · ' : '';
       refs.elev.textContent = place + fmtElevation(r) + ' · ' + disp.temp.toFixed(0) + '°C';
 
@@ -695,7 +692,6 @@
       // own aria-label, which is already a clean, comma-separated sentence
       // (UX review). Rebuilt every render since depth/temp change with mode.
       var labelParts = [r.name, r.region, Math.round(disp.depth) + ' centimeters ' + whenLabel, disp.temp.toFixed(0) + ' degrees'];
-      if(hasCurve(r)) labelParts.push('typical peak ' + r.typical_peak_cm + ' centimeters');
       if(r.elevation_top_m) labelParts.push(r.elevation_top_m + ' meters elevation');
       // placeRankedRows() (above) already set refs.rank for this render.
       if(!refs.rank.hidden) labelParts.push('ranked number ' + refs.rank.textContent);

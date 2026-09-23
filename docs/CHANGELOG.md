@@ -341,3 +341,42 @@ the same URL in this session (confirmed by checking the loaded
 `assets/app.js`'s content hash) - re-running with a cache-busting query
 param on the page URL itself (not just the already-hashed asset URL)
 showed all passing.
+
+**Redesigned the resort-list row's reference figure (2026-09-23).** Rows
+always showed `typical_peak_cm` in the row's emphasized right-side slot,
+regardless of mode or ranking - a live reading and an illustrative
+typical-season figure, side by side with no visual distinction, and shown
+even in the Highest-altitude ranking where depth has nothing to do with why
+a resort is listed (owner feedback, prompted by looking at a Live-mode
+Highest-altitude row showing "0cm now, 160cm peak"). Fixed two ways,
+together:
+- Typical peak no longer shows in list rows at all - it's still on the
+  detail card for a selected resort, which is the natural place to look
+  for it, so nothing was lost.
+- The freed-up slot (renamed `.peak` to `.highlight`) is empty by default,
+  and only shows a number for the one ranking whose sort key isn't already
+  the row's live reading: Highest altitude now shows elevation there,
+  styled noticeably larger/bolder (1.05rem/600 vs the row's other numbers
+  at .72-.78rem) than typical peak ever was, so the figure that actually
+  explains "why is this resort #3" gets the visual weight. The smaller
+  `.elev` line drops elevation in that case, so it isn't shown twice.
+  Snowiest needed no change - its sort key already is `.live`.
+
+Verified against the rebuilt page (screenshots, both with and without the
+Highest-altitude ranking active) and the existing `rake test` (54/54), JS
+suite (62/62) and all three `test/browser/ranking_check.js` scenarios
+(49/49) - none needed new assertions, since the aria-label and ranking
+logic those already check were unaffected. Also updated the resort-list
+card's own subtitle ("... typical peak for reference"), which had gone
+stale the moment peak stopped being shown there.
+
+**Reverted the elevation-emphasis part of the above (2026-09-23).** After
+looking at the Highest-altitude ranking with elevation promoted to a
+large/bold figure, the owner felt it looked worse than the plain small text
+it replaced - kept the peak removal, dropped the emphasis. Elevation is
+now always shown the same simple way it was before any of this (small text
+on the row's second line, next to temperature), for every ranking and no
+ranking alike; the `.highlight`/`.peak` slot and its ranking-conditional
+logic in `renderList()` are removed entirely rather than left unused, since
+nothing sets it anymore. Verified the same way: rebuilt page, screenshot,
+`rake test` 54/54, JS suite 62/62, all three browser-check scenarios 49/49.
