@@ -96,7 +96,7 @@ via `<script src>`) and `assets/styles.css` — only the generated JSON stays
 inlined in the page, since that's the one thing that has to travel with it.
 `app.js` is a single IIFE with no build step; the only external dependency is
 [Leaflet](https://leafletjs.com/) (loaded from cdnjs), which owns the map
-itself, while everything else — state, rendering, the chart — is plain
+itself, while everything else — state, rendering — is plain
 DOM/SVG with no framework. There's one mutable `state` object
 (`{ mode, dayIndex, selectedId, regions, tiers, query, mapOnly, ranking }`),
 changed only through `setState(patch)`, and a `refreshAll()` function that
@@ -116,11 +116,11 @@ map's current zoom and bounds:
 | `sortResorts(resorts)` | Pure. The one order shared by the list and the map markers' DOM order |
 | `renderList()` | Shows/hides each resort's pre-built row with `hidden`, and updates the visible rows' child `<span>`s via `.textContent` |
 | `renderFilters()` / `renderStatus()` | Chip on/off state and counts; the "Showing N of M" line |
-| `refreshMapView()` | The map-view-dependent part of a refresh (markers, list, filters, status, live refresh), run on every map `moveend` so panning doesn't also redraw the detail chart |
+| `refreshMapView()` | The map-view-dependent part of a refresh (markers, list, filters, status, live refresh), run on every map `moveend` so panning doesn't also redraw the detail card |
 | `refreshLiveConditions(resorts)` | Batched, once-per-resort client-side Open-Meteo refresh of what's currently on screen |
 | `renderSizeLegend()` | Draws the size-legend circles using the same `depthToRadius` scale |
-| `renderChart(resort)` / `renderFigures(resort)` | Draws the selected resort's season chart and monthly-figures table |
-| `renderDetail(resort)` | Updates the stat row and calls the chart/figures renderers |
+| `renderDetail(resort)` | Updates the selected resort's stat row, and calls `showForecast` when the selection changed |
+| `showForecast(resort)` / `renderForecastBody(days)` | Client-side Open-Meteo forecast fetch (real data, not illustrative) for the selected resort's detail card, cached per resort id for the page view |
 | `updateSelectionHighlight()` | Toggles `.is-selected` on the marker and row matching `state.selectedId` |
 | `refreshAll()` | `refreshMapView()` plus the legend, detail card and date label — the one function that makes the DOM match `state` |
 | `setState(patch)` | `Object.assign(state, patch)`, then `refreshAll()` — the only way `state` changes |
@@ -296,7 +296,7 @@ only shown or hidden.
   today's values: a slider scrubbing a hypothetical February shouldn't have
   markers quietly showing September's numbers. The status line says how many
   are hidden and why. Selecting one in Live mode and then switching still
-  shows its detail card, with a note in place of the chart.
+  shows its detail card, with a note explaining it has no typical-season data.
 - **Live refresh is lazy.** Open-Meteo's free tier allows 600 calls/minute,
   5,000/hour and 10,000/day per IP, and doesn't document whether a request
   for 100 locations counts as one call or 100. If each location counts,

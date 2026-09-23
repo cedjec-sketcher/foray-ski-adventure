@@ -380,3 +380,52 @@ ranking alike; the `.highlight`/`.peak` slot and its ranking-conditional
 logic in `renderList()` are removed entirely rather than left unused, since
 nothing sets it anymore. Verified the same way: rebuilt page, screenshot,
 `rake test` 54/54, JS suite 62/62, all three browser-check scenarios 49/49.
+
+**Removed the illustrative typical-season graph from the detail card
+(2026-09-23).** Owner feedback: the detail card's chart (built from
+`lib/season_curve.rb`'s hand-tuned bell curve, not measured history) reads as
+real data even though it's a fabricated shape - worth removing rather than
+keeping a "completely made up graph" on screen while a better data source is
+figured out (see the JMA/SnowJapan feasibility research earlier this thread).
+Removed `renderChart`/`renderFigures` and the `.chart-wrap`/`#chart-desc`/
+`<details class="figures">` markup from `buildDetailSkeleton`/`renderDetail`
+in `assets/app.js`, plus the now-unused chart CSS in `assets/styles.css` and
+the `CHART_W`/`CHART_H`/`CHART_PAD_*`/`MAX_PEAK`/`yFor`/`xFor` constants and
+helpers. Deliberately left everything else alone: the "Typical peak" stat in
+the header row, the map's Typical-season mode/date slider, and marker sizing
+still use the same illustrative `typical_season_cm`/`typical_peak_cm` fields
+- only the chart itself (the part that visually resembled a real measured
+curve) came out. The detail card now ends after the stat row for resorts
+that have typical-season data; nothing replaces the chart yet, pending a
+decision on what belongs there (candidates under discussion: a real weather
+forecast via Open-Meteo's forecast API, since the app already fetches from
+Open-Meteo client-side for live conditions; and/or more resort facts, e.g.
+lift count, which OpenSkiMap already provides but `build_data.rb` currently
+discards). Verified: `rake test` 54/54 after regenerating `ski_data.json`/
+`index.html`, and a rebuilt-page screenshot confirming the chart, tooltip and
+monthly-figures table are gone with no console errors and no dangling
+references to the removed DOM ids/classes.
+
+**Added a 7-day weather forecast to the detail card, filling the space left
+by the removed chart (2026-09-23).** Owner picked this over the resort-facts
+alternative also proposed. Real data rather than another illustrative
+figure: a client-side `fetch()` per selected resort against Open-Meteo's
+existing forecast endpoint (`&daily=temperature_2m_max,temperature_2m_min,
+snowfall_sum,weather_code&forecast_days=7`), the same host/API the app
+already calls for live conditions, just with `daily` params instead of
+`current`. New in `assets/app.js`: a `WEATHER_LABEL` map from WMO weather
+code to a short text label (the app fetched `weather_code` for live
+conditions before this but never displayed it), and `showForecast`/
+`renderForecastBody`, wired into `renderDetail` behind a `lastForecastId`
+guard so it fetches once per resort selection rather than on every
+`refreshAll()` (mode toggles and season-slider drags re-render the detail
+card without changing which resort is selected). Results are cached per
+resort id for the page view; a failed fetch shows "Forecast unavailable"
+rather than breaking the card, matching the existing live-refresh
+fallback pattern. Shown for every resort, not just the ones with a
+typical-season curve - live-only (smaller) resorts previously had nothing
+below the "no typical-season pattern" note, so this is a net-new feature for
+them, not just a chart replacement. Verified: `rake test` 54/54, and in the
+browser - selected a curved resort (Niseko United) and a live-only one
+(Niseko Moiwa), confirmed each showed a real 7-day table with different,
+resort-specific figures, no console errors either time.
