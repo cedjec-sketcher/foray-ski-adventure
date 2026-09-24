@@ -429,3 +429,46 @@ them, not just a chart replacement. Verified: `rake test` 54/54, and in the
 browser - selected a curved resort (Niseko United) and a live-only one
 (Niseko Moiwa), confirmed each showed a real 7-day table with different,
 resort-specific figures, no console errors either time.
+
+**Redesigned the forecast as a seven-column strip with cloud-stack icons
+(2026-09-24).** The first forecast was a plain four-column table. Now each
+day is a column: weekday, an icon, high over low temperature (plain text),
+and a vertical bar for forecast new snow (shared scale, 25 cm or the biggest
+day if larger, so days compare with each other). Precipitation intensity is
+shown by the number of clouds in the icon - one for light, two for normal,
+three for heavy (two below, the right one a little lower, one on top) - each
+cloud carrying its own snowflakes or raindrops, so snow and rain are told
+apart and heavy is told from light. This replaced a dots-under-the-icon
+variant that read as decoration rather than as precipitation. The icons are
+inline SVG built by pure helpers in `assets/app.js` (`weatherInfo` maps WMO
+codes to kind/level/label, `forecastIconSvg` draws them), not an icon font,
+since the page has no build step. Each mark has a surface-coloured halo so the
+top cloud's flakes leave a clean gap where they land on the clouds behind.
+The text label ("Heavy snow") moved to a tooltip and screen-reader text on
+each day. New unit tests cover the code mapping, cloud counts, bar scaling
+and the description text; these could not be run in the authoring sandbox
+(no `node`), so CI is their first run. Checked in the browser with mocked
+winter data (a September forecast has no snow): desktop and 375px, no
+overflow, no console errors.
+
+**Forecast test coverage, and two small robustness fixes (2026-09-24).**
+Added 20 unit tests (`test/js/app.test.js`: every documented WMO code maps to
+a known kind, snow/rain always have a level of 1-3, cloud counts and the
+lower-right-cloud geometry of the three-cloud stack, halos on every mark,
+`fmtDay` across a month boundary, `parseForecast` shapes and rejection) and a
+browser check, `test/browser/forecast_check.js` (21 assertions: one fetch per
+resort, no refetch or strip rebuild on mode toggles/slider drags, a slow
+response for an earlier selection can't overwrite a later one, network and
+HTTP failures show "Forecast unavailable" and don't break the next resort).
+Writing them turned up a gap: Open-Meteo can return null temperatures, which
+`Math.round(null)` would have shown as a made-up "0°". Extracted
+`parseForecast` (also rejects a response with no `daily` block) and `fmtTemp`
+(null becomes a dash). Verified the new checks have teeth by temporarily
+removing the stale-response guard, the per-resort cache, the same-resort
+re-render guard and the null handling: the browser check failed on exactly
+those (one check, the stale-response one, initially did not, because two test
+resorts rounded to the same temperature - fixed by making the marker unique
+per resort). No `node` in the authoring sandbox, so the unit tests were run
+through a small shim in the browser (82/82); CI is the first real
+`node --test` run of the new ones.
+

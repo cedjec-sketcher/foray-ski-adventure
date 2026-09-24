@@ -382,3 +382,135 @@ test('fetchMetaLabel: Live mode reflects the live-fetch outcome', () => {
   assert.equal(app.fetchMetaLabel('live', false), 'SNAPSHOT (LIVE REFRESH FAILED)');
   assert.equal(app.fetchMetaLabel('live', 'partial'), 'PARTLY LIVE (SOME REFRESHES FAILED)');
 });
+
+test('weatherInfo separates light, normal and heavy snow and rain by level', () => {
+  assert.deepEqual([71, 73, 75].map((c) => app.weatherInfo(c).level), [1, 2, 3]);
+  assert.deepEqual([61, 63, 65].map((c) => app.weatherInfo(c).level), [1, 2, 3]);
+  assert.equal(app.weatherInfo(75).kind, 'snow');
+  assert.equal(app.weatherInfo(65).kind, 'rain');
+  assert.equal(app.weatherInfo(75).label, 'Heavy snow');
+});
+
+test('weatherInfo gives sun, cloud, fog and thunder no intensity level', () => {
+  [0, 3, 45, 95].forEach((c) => assert.equal(app.weatherInfo(c).level, 0));
+});
+
+test('weatherInfo falls back to an unknown kind for unmapped codes', () => {
+  assert.equal(app.weatherInfo(1234).kind, 'unknown');
+});
+
+test('forecastIconSvg draws one cloud per precipitation level', () => {
+  const clouds = (code) => (app.forecastIconSvg(app.weatherInfo(code)).match(/wx-cloud/g) || []).length;
+  assert.equal(clouds(71), 1);
+  assert.equal(clouds(73), 2);
+  assert.equal(clouds(75), 3);
+  assert.equal(clouds(65), 3);
+  assert.equal(clouds(3), 1);
+  assert.equal(clouds(0), 0);
+});
+
+test('forecastIconSvg uses flakes for snow and drops for rain', () => {
+  assert.match(app.forecastIconSvg(app.weatherInfo(73)), /wx-dot/);
+  assert.doesNotMatch(app.forecastIconSvg(app.weatherInfo(73)), /M8\.5 19\.6/);
+  assert.match(app.forecastIconSvg(app.weatherInfo(63)), /M8\.5 19\.6/);
+});
+
+test('snowBarPct scales against the given max, with a visible minimum', () => {
+  assert.equal(app.snowBarPct(0, 25), 0);
+  assert.equal(app.snowBarPct(12.5, 25), 50);
+  assert.equal(app.snowBarPct(0.1, 25), 6);
+  assert.equal(app.snowBarPct(40, 25), 100);
+});
+
+test('describeForecastDay lists conditions, temps and only mentions snow when there is some', () => {
+  const day = { date: '2026-02-14', tMax: -2.6, tMin: -8.4, snow: 11.04, code: 73 };
+  assert.equal(app.describeForecastDay(day), 'Sat 14: Snow, high -3°, low -8°, 11.0 cm new snow');
+  assert.equal(app.describeForecastDay({ date: '2026-02-14', tMax: 1, tMin: -4, snow: 0, code: 0 }),
+    'Sat 14: Clear, high 1°, low -4°');
+});
+
+test('every weather code Open-Meteo documents maps to a known kind', () => {
+  const documented = [0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67,
+    71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99];
+  documented.forEach((c) => assert.notEqual(app.weatherInfo(c).kind, 'unknown', 'code ' + c));
+});
+
+test('snow and rain codes always carry a level of 1 to 3, other kinds level 0', () => {
+  [0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99].forEach((c) => {
+    const { kind, level } = app.weatherInfo(c);
+    if (kind === 'snow' || kind === 'rain') assert.ok(level >= 1 && level <= 3, 'code ' + c);
+    else assert.equal(level, 0, 'code ' + c);
+  });
+});
+
+test('heavier snow is never a lower level than lighter snow', () => {
+  assert.ok(app.weatherInfo(86).level > app.weatherInfo(85).level);
+  assert.ok(app.weatherInfo(82).level >= app.weatherInfo(81).level);
+  assert.ok(app.weatherInfo(81).level >= app.weatherInfo(80).level);
+});
+
+test('forecastIconSvg for an unknown code is an empty, decorative svg', () => {
+  const svg = app.forecastIconSvg(app.weatherInfo(1234));
+  assert.match(svg, /^<svg[^>]*aria-hidden="true"[^>]*><\/svg>$/);
+});
+
+test('the three-cloud stack has two clouds below, the right one lower, and one on top', () => {
+  const svg = app.forecastIconSvg(app.weatherInfo(75));
+  const pos = [...svg.matchAll(/translate\((\d+),(\d+)\)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  assert.equal(pos.length, 3);
+  const [left, right, top] = pos;
+  assert.ok(right[1] > left[1], 'right cloud sits lower than the left one');
+  assert.ok(top[1] < left[1], 'top cloud is above both');
+  assert.ok(top[0] > left[0] && top[0] < right[0], 'top cloud is centred between them');
+});
+
+test('every precipitation mark is drawn with a halo behind it', () => {
+  const svg = app.forecastIconSvg(app.weatherInfo(73));
+  assert.equal((svg.match(/wx-halo-dot/g) || []).length, (svg.match(/class="wx-dot"/g) || []).length);
+});
+
+test('snowBarPct treats missing, negative and NaN amounts as no bar', () => {
+  [undefined, null, NaN, -3].forEach((v) => assert.equal(app.snowBarPct(v, 25), 0));
+});
+
+test('fmtTemp rounds, shows a dash for a missing value, and never prints -0', () => {
+  assert.equal(app.fmtTemp(-2.6), '-3°');
+  assert.equal(app.fmtTemp(4.4), '4°');
+  assert.equal(app.fmtTemp(-0.4), '0°');
+  assert.equal(app.fmtTemp(null), '—');
+  assert.equal(app.fmtTemp(undefined), '—');
+});
+
+test('fmtDay stays unambiguous across a month boundary', () => {
+  assert.equal(app.fmtDay('2026-02-28'), 'Sat 28');
+  assert.equal(app.fmtDay('2026-03-01'), 'Sun 1');
+});
+
+test('parseForecast turns Open-Meteo parallel arrays into one object per day', () => {
+  const days = app.parseForecast({ daily: {
+    time: ['2026-02-14', '2026-02-15'], temperature_2m_max: [-2, 1], temperature_2m_min: [-8, -4],
+    snowfall_sum: [11.04, 0], weather_code: [73, 0] } });
+  assert.deepEqual(days, [
+    { date: '2026-02-14', tMax: -2, tMin: -8, snow: 11.04, code: 73 },
+    { date: '2026-02-15', tMax: 1, tMin: -4, snow: 0, code: 0 },
+  ]);
+});
+
+test('parseForecast turns a null snowfall into 0 but keeps null temperatures', () => {
+  const [day] = app.parseForecast({ daily: {
+    time: ['2026-02-14'], temperature_2m_max: [null], temperature_2m_min: [null],
+    snowfall_sum: [null], weather_code: [3] } });
+  assert.equal(day.snow, 0);
+  assert.equal(day.tMax, null);
+});
+
+test('parseForecast rejects a response with no daily block', () => {
+  assert.throws(() => app.parseForecast({}), /unexpected forecast shape/);
+  assert.throws(() => app.parseForecast(null), /unexpected forecast shape/);
+  assert.throws(() => app.parseForecast({ daily: { time: 'x' } }), /unexpected forecast shape/);
+});
+
+test('describeForecastDay says a missing temperature is missing, not zero', () => {
+  assert.equal(app.describeForecastDay({ date: '2026-02-14', tMax: null, tMin: -4, snow: 0, code: 3 }),
+    'Sat 14: Overcast, high —, low -4°');
+});
