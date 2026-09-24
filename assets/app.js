@@ -90,6 +90,116 @@
     return r.elevation_top_m ? r.elevation_top_m + "m" : "—";
   }
 
+  // ---- forecast helpers (pure) ----
+  // WMO weather code -> { kind, level, label }. `level` (1-3) is how heavy the
+  // precipitation is; the forecast icon draws that many stacked clouds, each
+  // carrying snowflakes or raindrops. Codes 0-3, fog and thunder have no
+  // intensity scale, so they're level 0 (one plain icon).
+  var WEATHER_INFO = (function(){
+    var m = {};
+    function add(codes, kind, level, label){
+      codes.forEach(function(c){ m[c] = { kind: kind, level: level, label: label }; });
+    }
+    add([0], "clear", 0, "Clear");
+    add([1], "clear", 0, "Mostly clear");
+    add([2], "cloud", 0, "Partly cloudy");
+    add([3], "cloud", 0, "Overcast");
+    add([45, 48], "fog", 0, "Fog");
+    add([51], "rain", 1, "Light drizzle");
+    add([53], "rain", 1, "Drizzle");
+    add([55], "rain", 2, "Heavy drizzle");
+    add([56], "rain", 1, "Freezing drizzle");
+    add([57], "rain", 2, "Freezing drizzle");
+    add([61], "rain", 1, "Light rain");
+    add([63], "rain", 2, "Rain");
+    add([65], "rain", 3, "Heavy rain");
+    add([66], "rain", 2, "Freezing rain");
+    add([67], "rain", 3, "Freezing rain");
+    add([71], "snow", 1, "Light snow");
+    add([73], "snow", 2, "Snow");
+    add([75], "snow", 3, "Heavy snow");
+    add([77], "snow", 1, "Snow grains");
+    add([80], "rain", 1, "Light rain showers");
+    add([81], "rain", 2, "Rain showers");
+    add([82], "rain", 3, "Heavy rain showers");
+    add([85], "snow", 1, "Light snow showers");
+    add([86], "snow", 3, "Heavy snow showers");
+    add([95, 96, 99], "thunder", 0, "Thunderstorm");
+    return m;
+  })();
+  function weatherInfo(code){
+    return WEATHER_INFO[code] || { kind: "unknown", level: 0, label: "Unknown" };
+  }
+
+  // Cloud outline (Tabler's "cloud" shape, 24x24 box, body ends at y=18); the
+  // precipitation marks hang below it, in the 19-23 band.
+  var CLOUD_PATH = "M6.657 18c-2.572 0 -4.657 -2.007 -4.657 -4.483c0 -2.475 2.085 -4.482 4.657 -4.482c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 1.927 -1.551 3.487 -3.465 3.487h-11.878z";
+  var CLOUD_MARKS = {
+    snow: '<circle class="wx-dot" cx="8" cy="20.8" r="1"/><circle class="wx-dot" cx="12" cy="22.2" r="1"/><circle class="wx-dot" cx="16" cy="20.8" r="1"/>',
+    rain: '<path class="wx-line" d="M8.5 19.6l-1 3M12.5 19.6l-1 3M16.5 19.6l-1 3"/>',
+    fog: '<path class="wx-line" d="M6 20.5h12M8 23h8"/>',
+    thunder: '<path class="wx-line" d="M12.5 18.5l-2.5 3h3l-2 3"/>'
+  };
+  // Each mark gets a surface-coloured halo drawn first, so a mark that lands
+  // on a cloud stacked behind it (the top cloud's flakes do) leaves a clean
+  // gap in that cloud's outline instead of a tangle of lines.
+  function cloudGlyph(kind, x, y){
+    var marks = CLOUD_MARKS[kind] || "";
+    var halo = marks.replace(/wx-dot/g, "wx-halo-dot").replace(/wx-line/g, "wx-halo-line").replace(/ r="1"/g, ' r="2.3"');
+    return '<g transform="translate(' + x + ',' + y + ')"><path class="wx-cloud" d="' + CLOUD_PATH + '"/>' +
+      halo + marks + '</g>';
+  }
+  var SUN_GLYPH = '<g transform="translate(8,9)"><circle class="wx-line" cx="12" cy="12" r="4"/>' +
+    '<path class="wx-line" d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4l1.4-1.4M17 7l1.4-1.4"/></g>';
+  // [x, y] of each cloud, drawn in order so later ones sit on top. Three
+  // clouds: two below (the right one a little lower, so the base isn't
+  // level) and one on top.
+  var CLOUD_STACK = { 1: [[8, 9]], 2: [[3, 10], [15, 10]], 3: [[0, 10], [16, 18], [8, 0]] };
+
+  function forecastIconSvg(info){
+    var body;
+    if(info.kind === "clear") body = SUN_GLYPH;
+    else if(info.kind === "unknown") body = "";
+    else if(info.level > 0){
+      body = CLOUD_STACK[info.level].map(function(p){ return cloudGlyph(info.kind, p[0], p[1]); }).join("");
+    } else body = cloudGlyph(info.kind, 8, 9);
+    return '<svg class="wx-icon" viewBox="0 0 40 42" aria-hidden="true" focusable="false">' + body + '</svg>';
+  }
+
+  // "Thu 24": weekday plus day of month, so a forecast crossing a month end
+  // still reads unambiguously.
+  function fmtDay(iso){
+    var d = new Date(iso + "T00:00:00");
+    return d.toLocaleDateString("en-US", { weekday: "short" }) + " " + d.getDate();
+  }
+
+  // Bar height as a percent of the tallest bar. Never below a visible sliver
+  // for a nonzero day, and 0 for none.
+  function snowBarPct(cm, scale){
+    if(!(cm > 0)) return 0;
+    return Math.max(6, Math.min(100, Math.round(cm / scale * 100)));
+  }
+
+  // Open-Meteo can leave a value null; show a dash rather than a made-up 0°.
+  function fmtTemp(v){ return v == null ? "—" : Math.round(v) + "°"; }
+
+  // Open-Meteo's `daily` block (parallel arrays) -> one object per day.
+  function parseForecast(data){
+    var d = data && data.daily;
+    if(!d || !Array.isArray(d.time)) throw new Error("unexpected forecast shape");
+    return d.time.map(function(date, i){
+      return { date: date, tMax: d.temperature_2m_max[i], tMin: d.temperature_2m_min[i],
+               snow: d.snowfall_sum[i] || 0, code: d.weather_code[i] };
+    });
+  }
+
+  function describeForecastDay(d){
+    var parts = [fmtDay(d.date) + ": " + weatherInfo(d.code).label,
+      "high " + fmtTemp(d.tMax), "low " + fmtTemp(d.tMin)];
+    if(d.snow > 0) parts.push(d.snow.toFixed(1) + " cm new snow");
+    return parts.join(", ");
+  }
+
   // Resort names come from a third-party dataset and end up in innerHTML
   // (the map tooltip), so they're escaped rather than trusted.
   function escapeHtml(s){
@@ -940,20 +1050,6 @@
   // conditions come from), fetched once per resort per page view and
   // cached — this is what replaced the illustrative typical-season chart,
   // which looked like real data but wasn't (see CHANGELOG.md).
-  var WEATHER_LABEL = {
-    0:"Clear", 1:"Mostly clear", 2:"Partly cloudy", 3:"Overcast",
-    45:"Fog", 48:"Fog",
-    51:"Light drizzle", 53:"Drizzle", 55:"Heavy drizzle",
-    56:"Freezing drizzle", 57:"Freezing drizzle",
-    61:"Light rain", 63:"Rain", 65:"Heavy rain",
-    66:"Freezing rain", 67:"Freezing rain",
-    71:"Light snow", 73:"Snow", 75:"Heavy snow", 77:"Snow grains",
-    80:"Rain showers", 81:"Rain showers", 82:"Heavy rain showers",
-    85:"Snow showers", 86:"Heavy snow showers",
-    95:"Thunderstorm", 96:"Thunderstorm", 99:"Thunderstorm"
-  };
-  function weatherLabel(code){ return WEATHER_LABEL[code] || "—"; }
-
   var FORECAST_DAYS = 7;
   var forecastCache = {}; // resort id -> array of day objects, or 'failed'
   var forecastToken = 0;  // bumped on every fetch so a stale response can't clobber a newer one
@@ -972,11 +1068,7 @@
       if(!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
     }).then(function(data){
-      var d = data.daily;
-      var days = d.time.map(function(date, i){
-        return { date: date, tMax: d.temperature_2m_max[i], tMin: d.temperature_2m_min[i],
-                  snow: d.snowfall_sum[i], code: d.weather_code[i] };
-      });
+      var days = parseForecast(data);
       forecastCache[r.id] = days;
       if(myToken === forecastToken) renderForecastBody(days);
     }).catch(function(err){
@@ -992,15 +1084,23 @@
       body.innerHTML = '<p class="detail-note">Forecast unavailable right now.</p>';
       return;
     }
-    var rows = days.map(function(d){
-      var snowCell = d.snow > 0 ? d.snow.toFixed(1) + " cm" : "—";
-      return '<tr><td>' + fmtDate(d.date) + '</td><td>' + weatherLabel(d.code) + '</td>' +
-        '<td>' + Math.round(d.tMax) + '&deg;/' + Math.round(d.tMin) + '&deg;</td>' +
-        '<td>' + snowCell + '</td></tr>';
+    // Bars share one scale: 25 cm, or the biggest day if that's more.
+    var scale = days.reduce(function(m, d){ return Math.max(m, d.snow || 0); }, 25);
+    var items = days.map(function(d){
+      var desc = describeForecastDay(d);
+      var pct = snowBarPct(d.snow, scale);
+      return '<li class="fc-day" title="' + desc + '"><span class="sr-only">' + desc + '</span>' +
+        '<div aria-hidden="true" class="fc-col">' +
+          '<span class="fc-dayname">' + fmtDay(d.date) + '</span>' +
+          forecastIconSvg(weatherInfo(d.code)) +
+          '<span class="fc-hi">' + fmtTemp(d.tMax) + '</span>' +
+          '<span class="fc-lo">' + fmtTemp(d.tMin) + '</span>' +
+          '<div class="fc-bars">' + (pct ? '<div class="fc-bar" style="height:' + pct + '%"></div>' : '') + '</div>' +
+          '<span class="fc-cm">' + (d.snow > 0 ? d.snow.toFixed(d.snow < 10 ? 1 : 0) + ' cm' : '—') + '</span>' +
+        '</div></li>';
     }).join('');
     body.innerHTML =
-      '<table class="forecast-table"><thead><tr><th>Day</th><th>Weather</th><th>Temp</th><th>New snow</th></tr></thead><tbody>' +
-      rows + '</tbody></table>' +
+      '<ol class="forecast-strip">' + items + '</ol>' +
       '<p class="detail-note">Forecast from <a href="https://open-meteo.com/">Open-Meteo</a>, fetched live for this resort.</p>';
   }
 
@@ -1157,6 +1257,9 @@
       isEligible: isEligible, classifyResort: classifyResort, isListed: isListed,
       rankResorts: rankResorts, isRankingReady: isRankingReady, TOP_N: TOP_N, RANKINGS: RANKINGS,
       REGION_ORDER: REGION_ORDER, TIER_ORDER: TIER_ORDER, TIER_MIN_ZOOM: TIER_MIN_ZOOM,
-      sortResorts: sortResorts, fetchMetaLabel: fetchMetaLabel };
+      sortResorts: sortResorts, fetchMetaLabel: fetchMetaLabel,
+      weatherInfo: weatherInfo, forecastIconSvg: forecastIconSvg, fmtDay: fmtDay,
+      snowBarPct: snowBarPct, describeForecastDay: describeForecastDay,
+      fmtTemp: fmtTemp, parseForecast: parseForecast };
   }
 })();

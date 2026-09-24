@@ -121,6 +121,7 @@ map's current zoom and bounds:
 | `renderSizeLegend()` | Draws the size-legend circles using the same `depthToRadius` scale |
 | `renderDetail(resort)` | Updates the selected resort's stat row, and calls `showForecast` when the selection changed |
 | `showForecast(resort)` / `renderForecastBody(days)` | Client-side Open-Meteo forecast fetch (real data, not illustrative) for the selected resort's detail card, cached per resort id for the page view |
+| `weatherInfo(code)` / `forecastIconSvg(info)` / `snowBarPct` / `describeForecastDay` | Pure. WMO code to kind, intensity level and label; the inline-SVG cloud-stack icon (one to three clouds by level); snow bar height; the per-day tooltip/screen-reader text |
 | `updateSelectionHighlight()` | Toggles `.is-selected` on the marker and row matching `state.selectedId` |
 | `refreshAll()` | `refreshMapView()` plus the legend, detail card and date label — the one function that makes the DOM match `state` |
 | `setState(patch)` | `Object.assign(state, patch)`, then `refreshAll()` — the only way `state` changes |

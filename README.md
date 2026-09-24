@@ -183,6 +183,15 @@ result — from a JS console on that page:
 await (0, eval)(await (await fetch('/test/browser/ranking_check.js')).text())
 ```
 
+`test/browser/forecast_check.js` does the same for the detail card's 7-day
+forecast (fetch-once caching, the stale-response guard, failure and
+missing-data states). It needs no debug page: it stubs Open-Meteo's forecast
+requests itself, so run it on the normal page (`http://localhost:8000/`):
+
+```js
+await (0, eval)(await (await fetch('/test/browser/forecast_check.js')).text())
+```
+
 `tmp/` is gitignored and not committed; running `build_debug_page.rb`
 regenerates it from whatever `index.html` currently is. These checks are
 real regression coverage, but only run manually today — see
