@@ -83,10 +83,9 @@ test('fmtDate formats an ISO date as a short month and day', () => {
   assert.equal(app.fmtDate('2026-02-14'), 'Feb 14');
 });
 
-test('fmtFetched includes the date and time from an Open-Meteo timestamp', () => {
-  const label = app.fmtFetched('2026-02-14T21:45');
-  assert.match(label, /Feb 14/);
-  assert.match(label, /9:45/);
+test('fmtFetched prints the Open-Meteo wall-clock time as-is, with no time zone name', () => {
+  assert.equal(app.fmtFetched('2026-02-14T21:45'), 'Feb 14, 9:45 PM');
+  assert.doesNotMatch(app.fmtFetched('2026-02-14T21:45'), /GMT|UTC|JST/);
 });
 
 // Regression tests for GitHub issue #1: the map hover tooltip could render
@@ -483,7 +482,7 @@ test('fmtTemp rounds, shows a dash for a missing value, and never prints -0', ()
 
 test('fmtDay stays unambiguous across a month boundary', () => {
   assert.equal(app.fmtDay('2026-02-28'), 'Sat 28');
-  assert.equal(app.fmtDay('2026-03-01'), 'Sun 1');
+  assert.equal(app.fmtDay('2026-03-01'), 'Sun Mar 1');
 });
 
 test('parseForecast turns Open-Meteo parallel arrays into one object per day', () => {
@@ -513,4 +512,9 @@ test('parseForecast rejects a response with no daily block', () => {
 test('describeForecastDay says a missing temperature is missing, not zero', () => {
   assert.equal(app.describeForecastDay({ date: '2026-02-14', tMax: null, tMin: -4, snow: 0, code: 3 }),
     'Sat 14: Overcast, high —, low -4°');
+});
+
+test('fmtDayParts splits weekday from date, and adds the month only on the 1st', () => {
+  assert.deepEqual(app.fmtDayParts('2026-02-14'), { weekday: 'Sat', date: '14' });
+  assert.deepEqual(app.fmtDayParts('2026-10-01'), { weekday: 'Thu', date: 'Oct 1' });
 });
