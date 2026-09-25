@@ -75,9 +75,13 @@
     var d = new Date(iso + "T00:00:00");
     return d.toLocaleDateString("en-US", {month:"short", day:"numeric"});
   }
+  // Open-Meteo's timestamps are already Japan wall-clock time (timezone=
+  // Asia/Tokyo in the request), and the caller adds the "JST". So the wall
+  // clock is printed as-is: read as UTC and printed as UTC, which neither
+  // shifts it into the viewer's zone nor prints that zone's name next to it.
   function fmtFetched(iso){
-    var d = new Date(iso.replace(" ","T"));
-    return d.toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZoneName:"short"});
+    var d = new Date(iso.replace(" ","T") + "Z");
+    return d.toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZone:"UTC"});
   }
 
   // Only larger resorts have a typical-season pattern (see
@@ -166,11 +170,18 @@
     return '<svg class="wx-icon" viewBox="0 0 40 42" aria-hidden="true" focusable="false">' + body + '</svg>';
   }
 
-  // "Thu 24": weekday plus day of month, so a forecast crossing a month end
-  // still reads unambiguously.
-  function fmtDay(iso){
+  // "Thu 24": weekday plus day of month.
+  // The first of a month carries the month ("Oct 1"), so a week that crosses
+  // a month end doesn't read as "Wed 30, Thu 1".
+  function fmtDayParts(iso){
     var d = new Date(iso + "T00:00:00");
-    return d.toLocaleDateString("en-US", { weekday: "short" }) + " " + d.getDate();
+    var date = String(d.getDate());
+    if(d.getDate() === 1) date = d.toLocaleDateString("en-US", { month: "short" }) + " " + date;
+    return { weekday: d.toLocaleDateString("en-US", { weekday: "short" }), date: date };
+  }
+  function fmtDay(iso){
+    var p = fmtDayParts(iso);
+    return p.weekday + " " + p.date;
   }
 
   // Bar height as a percent of the tallest bar. Never below a visible sliver
@@ -1089,14 +1100,15 @@
     var items = days.map(function(d){
       var desc = describeForecastDay(d);
       var pct = snowBarPct(d.snow, scale);
+      var parts = fmtDayParts(d.date);
       return '<li class="fc-day" title="' + desc + '"><span class="sr-only">' + desc + '</span>' +
         '<div aria-hidden="true" class="fc-col">' +
-          '<span class="fc-dayname">' + fmtDay(d.date) + '</span>' +
+          '<span class="fc-dayname"><span>' + parts.weekday + '</span><span>' + parts.date + '</span></span>' +
           forecastIconSvg(weatherInfo(d.code)) +
           '<span class="fc-hi">' + fmtTemp(d.tMax) + '</span>' +
           '<span class="fc-lo">' + fmtTemp(d.tMin) + '</span>' +
           '<div class="fc-bars">' + (pct ? '<div class="fc-bar" style="height:' + pct + '%"></div>' : '') + '</div>' +
-          '<span class="fc-cm">' + (d.snow > 0 ? d.snow.toFixed(d.snow < 10 ? 1 : 0) + ' cm' : '—') + '</span>' +
+          '<span class="fc-cm">' + (d.snow > 0 ? d.snow.toFixed(d.snow < 10 ? 1 : 0) + 'cm' : '—') + '</span>' +
         '</div></li>';
     }).join('');
     body.innerHTML =
@@ -1260,6 +1272,6 @@
       sortResorts: sortResorts, fetchMetaLabel: fetchMetaLabel,
       weatherInfo: weatherInfo, forecastIconSvg: forecastIconSvg, fmtDay: fmtDay,
       snowBarPct: snowBarPct, describeForecastDay: describeForecastDay,
-      fmtTemp: fmtTemp, parseForecast: parseForecast };
+      fmtTemp: fmtTemp, parseForecast: parseForecast, fmtDayParts: fmtDayParts };
   }
 })();

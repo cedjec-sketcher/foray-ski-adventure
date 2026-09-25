@@ -472,3 +472,31 @@ per resort). No `node` in the authoring sandbox, so the unit tests were run
 through a small shim in the browser (82/82); CI is the first real
 `node --test` run of the new ones.
 
+**Fixed phone-width overflow and the "GMT+2 JST" timestamp (2026-09-25).**
+Two findings from the third UX review round.
+- At 320 CSS px the map and list cards were wider than the screen and the page
+  scrolled sideways (at 375 px only a couple of pixels). Cause: the one-column
+  layout used `grid-template-columns: 1fr`, which is `minmax(auto, 1fr)`, so a
+  card could never be narrower than its content - here the date row (slider,
+  two end labels and a 118 px date label, none of which could wrap). The
+  column is now `minmax(0, 1fr)`, the date row wraps, and the Dec 1 / Apr 30
+  labels don't. Measured `scrollWidth == clientWidth` at 320, 375 and 768 px.
+  In the forecast strip at 320 px the weekday labels ran together and the snow
+  amounts overlapped, so the day label is now two lines (weekday over date)
+  and the amounts drop the space before "cm" and shrink a little below 380 px.
+- The header timestamp printed the viewer's own zone name next to the literal
+  "JST" (a viewer in Sweden saw "GMT+2 JST"). Open-Meteo's times are already
+  Japan wall-clock time (the request sets `timezone=Asia/Tokyo`), so
+  `fmtFetched` now prints that wall clock as-is ("Sep 25, 7:30 PM JST") and
+  never involves the viewer's zone, which also removes a DST-gap edge case.
+- Also from the review: the forecast's first day of a month now carries the
+  month ("Thu Oct 1"), so a week crossing a month end isn't "Wed 30, Thu 1".
+
+Tests: `fmtFetched` now asserts the exact string and the absence of any zone
+name; new `fmtDayParts` test; the month-boundary test expects "Sun Mar 1".
+Unit tests 83/83 and `forecast_check.js` 21/21 (through the browser shim, no
+`node` in the sandbox), `rake test` 54/54. Note for anyone rebuilding often:
+`scripts/build_data.rb` fetches ~477 locations from Open-Meteo and the free
+tier limits a minute, so several builds in a row fail with "Minutely API
+request limit exceeded" - wait a minute and retry.
+
