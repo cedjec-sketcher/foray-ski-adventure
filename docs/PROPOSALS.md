@@ -29,16 +29,24 @@ Two things `rake test` / `node --test test/js` don't reach:
   never been written down as a repeatable `docs/QA_CHECKLIST.md`, so it
   depends on remembering to do it.
 
-## Forecast — a snow forecast view, and a forecast-based Top 10
+## Forecast — a map-wide forecast mode, and a forecast-based Top 10
 
 Proposed by the owner (2026-09-22), building on the Live/Typical season
 split and the Top-10 rankings: a third data mode showing what's *expected*,
 not just what's now or what's typical.
 
-**a) A snow forecast view.** Open-Meteo's forecast endpoint (the same one
-the live refresh already calls) has a free `daily=snowfall_sum` field, up
-to 16 days out — confirmed against the live API while writing this
-proposal, so this is buildable with no new data source:
+**Already built (2026-09-23/25), and reusable here:** a per-resort 7-day
+forecast strip in the detail card (see CHANGELOG.md). It fetches
+`daily=temperature_2m_max,temperature_2m_min,snowfall_sum,weather_code`
+from Open-Meteo for the *selected* resort only, parses it with
+`parseForecast` and draws it with `weatherInfo`/`forecastIconSvg`. That
+settles the endpoint, the parsing, null handling and the icon language. What
+follows is still **not built**: forecast data for every resort at once,
+shown on the map and ranked.
+
+**a) A map-wide forecast mode.** The same endpoint's
+`daily=snowfall_sum` goes up to 16 days out, so no new data source is
+needed:
 
 ```
 GET /v1/forecast?latitude=...&longitude=...&daily=snowfall_sum&forecast_days=10
@@ -49,9 +57,8 @@ call it "10-day forecast" — with the date slider replaced by a day picker
 (or kept, scrubbing the 10 forecast days instead of the illustrative
 season). Marker size would show forecast snowfall for the selected day (a
 rate, not the season's cumulative depth, so the color/size legend needs a
-forecast-mode label change). The detail chart gets a third series option:
-today's forecast sits oddly next to a fixed illustrative curve, so probably
-a separate small chart rather than a third line on the existing one.
+forecast-mode label change). The detail card needs no new chart: its
+forecast strip already covers the selected resort.
 
 **b) A Top-10 "most snow coming" list**, using `rankResorts`/`classifyResort`
 (same pattern as the two existing Top-10 lists), ranked by total forecast
@@ -78,11 +85,11 @@ per-resort daily series the view renders.
   less reliable at day 9 than day 1, and worth saying so in the UI (a
   confidence note, or shading later days differently) rather than
   presenting all 10 days with equal weight.
-- **Same terrain-resolution caveat as live data** (documented in
-  DATA_LICENSE.md / README): Open-Meteo's model grid doesn't resolve
-  individual mountains, so neighbouring resorts can get near-identical
-  forecasts. This affects the Top-10's tie-breaking the same way the live
-  snow ranking already handles it.
+- **Same terrain-resolution caveat as live data** (see "Data source
+  accuracy" below): Open-Meteo's model grid doesn't resolve individual
+  mountains, so neighbouring resorts can get near-identical forecasts. This
+  affects the Top-10's tie-breaking the same way the live snow ranking
+  already handles it.
 - **Off-season is genuinely different here.** The live/typical-season split
   hides live-only resorts outside winter because the *values* are boring
   (0cm), but the forecast is still meaningful in September — it would
@@ -91,9 +98,50 @@ per-resort daily series the view renders.
   like Typical season implicitly does, or just show truthfully-small
   numbers.
 
-Not started. Medium-sized relative to the two shipped Top-10 lists: the
-ranking and UI patterns transfer directly, but the network shape (multi-day
-arrays, fetch-everything-up-front) is new.
+Map mode and Top 10 not started. Medium-sized relative to the two shipped
+Top-10 lists: the ranking and UI patterns transfer directly, and so does the
+detail card's parsing and icons, but the network shape (multi-day arrays for
+every resort, fetched up front) is new.
+
+## Data source accuracy — model snow depth vs. what resorts report
+
+Investigated earlier (September 2026), not acted on. Live and typical-season
+snow depth come from Open-Meteo, which is a **weather model, not a resort
+measurement**, and it substantially **understates** mountain snow depth. For
+example, at Niseko the model gave ~85-90 cm while the resort reported
+165-375 cm for a comparable date. The main cause: the model's terrain height
+at a resort's coordinates can be hundreds of metres off the real slopes.
+This affects every depth the app shows: marker sizes, list rows, the
+"Snowiest" ranking and the detail card. Neither the README nor
+DATA_LICENSE.md says this to users yet.
+
+Alternatives looked at:
+
+- **JMA (Japan Meteorological Agency) stations.** Readable with plain GET
+  requests (`data.jma.go.jp/stats/etrn/...`), but how useful they are
+  depends entirely on the resort. Very good for Nozawa, where a station
+  is at the resort itself. Unusable for Zao, whose only options are a
+  lowland city station or a summit station that has never recorded any
+  data.
+- **SnowJapan.com.** Independently run daily depth reports taken from the
+  resorts' own figures, with 14 seasons of archives per resort, and it
+  separates new snowfall from standing depth. The best data quality found,
+  and it covers every resort in the pilot set, Zao included. But it
+  publishes **no reuse or API terms**, so we'd have to ask them before
+  building anything automated on it.
+
+**Conclusion:** there's no clean drop-in replacement. If this is pursued,
+it's a targeted effort for a handful of resorts (a per-resort choice of
+source), not a wholesale swap. Cheaper steps that would help in the
+meantime:
+
+- Say it in the UI: a short note next to live depths ("model estimate,
+  often lower than the resort's own report").
+- Say it in README/DATA_LICENSE.md.
+
+The same data would also be the most credible replacement for the synthetic
+typical-season curves (see "Rethink the typical-season curves" below),
+through SnowJapan's archives if permission were given.
 
 ## Structure & maintainability
 
@@ -241,8 +289,14 @@ Roughly quick-win-first, independent of each other unless noted.
    independent of 4, but touching the same test surface, so doing them
    close together avoids rebasing one against the other. Also closes the
    DOM-coverage half of "Testing gaps."
-6. Forecast view and forecast-based Top 10 — the biggest item here; medium
-   size, depends on nothing above but benefits from (4) already being done.
+6. Map-wide forecast mode and forecast-based Top 10 — the biggest item
+   here; medium size, depends on nothing above but benefits from (4)
+   already being done.
+
+The open UX findings in [UX_FINDINGS.md](./UX_FINDINGS.md) (2026-09-25
+round) are separate from this list and mostly small; the first two there
+(silent empty search in Typical season mode, "0cm now" in the altitude
+ranking) are the quickest wins.
 
 Let me know which of these you'd like implemented first — happy to start
 with any one in isolation.
