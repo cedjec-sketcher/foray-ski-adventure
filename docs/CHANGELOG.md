@@ -500,3 +500,35 @@ Unit tests 83/83 and `forecast_check.js` 21/21 (through the browser shim, no
 tier limits a minute, so several builds in a row fail with "Minutely API
 request limit exceeded" - wait a minute and retry.
 
+**Detail card reorganised into labelled time frames (2026-09-25).** From the
+third UX review: the card put illustrative Feb 14 numbers ("-12°C") directly
+above a real September forecast ("18°") with nothing marking which was which,
+and on a wide screen it sits far below the map, so choosing a resort showed
+no visible change. Now:
+- The card has three blocks: resort facts (top elevation, runs) in the header;
+  a conditions block labelled either "Live now" or "Typical season · Feb 14 ·
+  illustrative"; and "Next 7 days · forecast". The typical peak is only shown
+  in the illustrative view (it used to sit next to live readings).
+- The forecast opens with the week's total ("38 cm new snow expected", or "No
+  new snow expected"), has a one-line legend (more clouds means heavier
+  precipitation; bar height scale, e.g. "full height = 25 cm"), and a dry week
+  drops the empty bar band and the row of dashes entirely.
+- Icons are larger (max 56px) and the snowflake dots bigger, so snow against
+  rain no longer rests on 1-2px marks.
+- While a resort is selected and its card is off screen, a pill ("Rusutsu ·
+  forecast ↓") shows at the bottom of the window and scrolls to the card
+  (smooth unless the user prefers reduced motion) and moves focus to it. It
+  hides once the card is visible. An IntersectionObserver drives it.
+- Selecting a resort is announced through a polite live region ("Showing
+  details and forecast for ...").
+Not done from that review: a legend-free reading of the cloud counts (drizzle
+codes still top out at two clouds, rain at three - the legend states the
+principle, not the mapping), tap-to-reveal of the text label, and making the
+strip use the full desktop width.
+Tests: unit test for `snowTotalLabel`; new `test/browser/detail_card_check.js`
+(20 checks: labels per mode, live-only resort, summary, legend, dry week,
+announcement, the pill appearing/working/hiding). Verified it fails when the
+peak hiding, the pill and the dry-week layout are broken. Unit tests 84/84 and
+`forecast_check.js` 21/21 via the browser shim (no `node` in the sandbox),
+`rake test` 54/54.
+
