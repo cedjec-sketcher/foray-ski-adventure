@@ -518,3 +518,11 @@ test('fmtDayParts splits weekday from date, and adds the month only on the 1st',
   assert.deepEqual(app.fmtDayParts('2026-02-14'), { weekday: 'Sat', date: '14' });
   assert.deepEqual(app.fmtDayParts('2026-10-01'), { weekday: 'Thu', date: 'Oct 1' });
 });
+
+test('snowTotalLabel sums the week, and says so plainly when there is none', () => {
+  const d = (snow) => ({ date: '2026-02-14', tMax: 0, tMin: -5, snow, code: 73 });
+  assert.equal(app.snowTotalLabel([d(24), d(11), d(3), d(0)]), '38 cm new snow expected');
+  assert.equal(app.snowTotalLabel([d(2.5), d(1.25), d(0)]), '3.8 cm new snow expected');
+  assert.equal(app.snowTotalLabel([d(0), d(0)]), 'No new snow expected');
+  assert.equal(app.snowTotalLabel([d(-1), d(NaN)]), 'No new snow expected');
+});

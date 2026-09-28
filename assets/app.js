@@ -139,7 +139,7 @@
   // precipitation marks hang below it, in the 19-23 band.
   var CLOUD_PATH = "M6.657 18c-2.572 0 -4.657 -2.007 -4.657 -4.483c0 -2.475 2.085 -4.482 4.657 -4.482c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 1.927 -1.551 3.487 -3.465 3.487h-11.878z";
   var CLOUD_MARKS = {
-    snow: '<circle class="wx-dot" cx="8" cy="20.8" r="1"/><circle class="wx-dot" cx="12" cy="22.2" r="1"/><circle class="wx-dot" cx="16" cy="20.8" r="1"/>',
+    snow: '<circle class="wx-dot" cx="8" cy="20.8" r="1.4"/><circle class="wx-dot" cx="12" cy="22.2" r="1.4"/><circle class="wx-dot" cx="16" cy="20.8" r="1.4"/>',
     rain: '<path class="wx-line" d="M8.5 19.6l-1 3M12.5 19.6l-1 3M16.5 19.6l-1 3"/>',
     fog: '<path class="wx-line" d="M6 20.5h12M8 23h8"/>',
     thunder: '<path class="wx-line" d="M12.5 18.5l-2.5 3h3l-2 3"/>'
@@ -149,7 +149,7 @@
   // gap in that cloud's outline instead of a tangle of lines.
   function cloudGlyph(kind, x, y){
     var marks = CLOUD_MARKS[kind] || "";
-    var halo = marks.replace(/wx-dot/g, "wx-halo-dot").replace(/wx-line/g, "wx-halo-line").replace(/ r="1"/g, ' r="2.3"');
+    var halo = marks.replace(/wx-dot/g, "wx-halo-dot").replace(/wx-line/g, "wx-halo-line").replace(/ r="1\.4"/g, ' r="2.8"');
     return '<g transform="translate(' + x + ',' + y + ')"><path class="wx-cloud" d="' + CLOUD_PATH + '"/>' +
       halo + marks + '</g>';
   }
@@ -202,6 +202,13 @@
       return { date: date, tMax: d.temperature_2m_max[i], tMin: d.temperature_2m_min[i],
                snow: d.snowfall_sum[i] || 0, code: d.weather_code[i] };
     });
+  }
+
+  // One line for the top of the forecast: the week's total, or that there is none.
+  function snowTotalLabel(days){
+    var total = days.reduce(function(sum, d){ return sum + (d.snow > 0 ? d.snow : 0); }, 0);
+    if(total <= 0) return "No new snow expected";
+    return total.toFixed(total < 10 ? 1 : 0) + " cm new snow expected";
   }
 
   function describeForecastDay(d){
@@ -1035,22 +1042,28 @@
 
   function buildDetailSkeleton(){
     detailCard.innerHTML =
+      '<p class="sr-only" role="status" id="d-announce"></p>' +
       '<div class="detail-head">' +
         '<div>' +
           '<h1 class="detail-title" id="d-name"></h1>' +
           '<span class="badge" id="d-badge"><span class="dot"></span><span id="d-region"></span></span>' +
         '</div>' +
         '<div class="stat-row">' +
-          '<div class="stat"><div class="k" id="d-snow-k">Snow</div><div class="v" id="d-live"></div></div>' +
-          '<div class="stat"><div class="k" id="d-temp-k">Temp</div><div class="v" id="d-temp"></div></div>' +
-          '<div class="stat"><div class="k">Typical peak</div><div class="v" id="d-peak"></div></div>' +
           '<div class="stat"><div class="k">Top elevation</div><div class="v" id="d-elev"></div></div>' +
           '<div class="stat" id="d-runs-stat"><div class="k">Downhill runs</div><div class="v" id="d-runs"></div></div>' +
         '</div>' +
       '</div>' +
-      '<p class="detail-note" id="d-nocurve" hidden>Live conditions only. This resort has no typical-season pattern yet; those exist for the larger resorts.</p>' +
-      '<div class="forecast">' +
-        '<p class="section-label">7-day forecast</p>' +
+      '<div class="detail-block">' +
+        '<p class="section-label" id="d-cond-label"></p>' +
+        '<div class="stat-row">' +
+          '<div class="stat"><div class="k">Snow</div><div class="v" id="d-live"></div></div>' +
+          '<div class="stat"><div class="k">Temp</div><div class="v" id="d-temp"></div></div>' +
+          '<div class="stat" id="d-peak-stat"><div class="k">Typical peak</div><div class="v" id="d-peak"></div></div>' +
+        '</div>' +
+        '<p class="detail-note" id="d-nocurve" hidden>Live conditions only. This resort has no typical-season pattern yet; those exist for the larger resorts.</p>' +
+      '</div>' +
+      '<div class="detail-block forecast">' +
+        '<p class="section-label">Next 7 days &middot; forecast</p>' +
         '<div id="forecast-body"><p class="detail-note">Loading forecast…</p></div>' +
       '</div>';
   }
@@ -1095,8 +1108,10 @@
       body.innerHTML = '<p class="detail-note">Forecast unavailable right now.</p>';
       return;
     }
-    // Bars share one scale: 25 cm, or the biggest day if that's more.
+    // Bars share one scale: 25 cm, or the biggest day if that's more. A dry
+    // week has no bars or amounts at all, rather than a blank band.
     var scale = days.reduce(function(m, d){ return Math.max(m, d.snow || 0); }, 25);
+    var dry = !days.some(function(d){ return d.snow > 0; });
     var items = days.map(function(d){
       var desc = describeForecastDay(d);
       var pct = snowBarPct(d.snow, scale);
@@ -1107,14 +1122,43 @@
           forecastIconSvg(weatherInfo(d.code)) +
           '<span class="fc-hi">' + fmtTemp(d.tMax) + '</span>' +
           '<span class="fc-lo">' + fmtTemp(d.tMin) + '</span>' +
-          '<div class="fc-bars">' + (pct ? '<div class="fc-bar" style="height:' + pct + '%"></div>' : '') + '</div>' +
-          '<span class="fc-cm">' + (d.snow > 0 ? d.snow.toFixed(d.snow < 10 ? 1 : 0) + 'cm' : '—') + '</span>' +
+          (dry ? '' :
+            '<div class="fc-bars">' + (pct ? '<div class="fc-bar" style="height:' + pct + '%"></div>' : '') + '</div>' +
+            '<span class="fc-cm">' + (d.snow > 0 ? d.snow.toFixed(d.snow < 10 ? 1 : 0) + 'cm' : '—') + '</span>') +
         '</div></li>';
     }).join('');
     body.innerHTML =
-      '<ol class="forecast-strip">' + items + '</ol>' +
+      '<p class="fc-summary">' + snowTotalLabel(days) + '</p>' +
+      '<ol class="forecast-strip' + (dry ? ' is-dry' : '') + '">' + items + '</ol>' +
+      '<p class="fc-legend">More clouds means heavier precipitation.' +
+        (dry ? '' : ' Bar height is new snow (full height = ' + Math.round(scale) + ' cm).') + '</p>' +
       '<p class="detail-note">Forecast from <a href="https://open-meteo.com/">Open-Meteo</a>, fetched live for this resort.</p>';
   }
+
+  // ---- "jump to the detail card" pill ----
+  // On a wide screen the card sits well below the map and list, so choosing a
+  // resort changes nothing you can see. While a resort is selected and its
+  // card is off screen, this pill says so and takes you there.
+  var pill = document.getElementById('detail-pill');
+  var pillResort = null, detailInView = true, detailBelow = true;
+  function updatePill(){
+    pill.hidden = !pillResort || detailInView;
+    if(!pill.hidden) pill.textContent = pillResort.name + ' \u00b7 forecast ' + (detailBelow ? '\u2193' : '\u2191');
+  }
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(function(entries){
+      var e = entries[entries.length - 1];
+      detailInView = e.isIntersecting;
+      detailBelow = e.boundingClientRect.top > 0;
+      updatePill();
+    }).observe(detailCard);
+  }
+  detailCard.setAttribute('tabindex', '-1');
+  pill.addEventListener('click', function(){
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    detailCard.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    detailCard.focus({ preventScroll: true });
+  });
 
   function renderDetail(r){
     var disp = getDisplay(r);
@@ -1124,18 +1168,28 @@
     document.getElementById('d-region').textContent =
       r.prefecture && r.prefecture !== r.region ? r.prefecture + ' · ' + r.region : r.region;
     document.getElementById('d-badge').querySelector('.dot').style.background = regionColor(r.region);
-    document.getElementById('d-snow-k').textContent = liveView ? 'Live snow' : 'Snow, ' + fmtDate(DATES[state.dayIndex]);
-    document.getElementById('d-temp-k').textContent = liveView ? 'Live temp' : 'Temp, ' + fmtDate(DATES[state.dayIndex]);
+    // Live readings and the illustrative typical-season ones never share a
+    // label: the block says which it is, and the typical peak only appears
+    // in the illustrative view.
+    var dateLbl = fmtDate(DATES[state.dayIndex]) + (state.dayIndex === PEAK_INDEX ? ' (peak)' : '');
+    document.getElementById('d-cond-label').textContent =
+      liveView ? 'Live now' : 'Typical season \u00b7 ' + dateLbl + ' \u00b7 illustrative';
     document.getElementById('d-live').textContent = Math.round(disp.depth) + "cm";
     document.getElementById('d-live').classList.toggle('muted', disp.depth === 0);
     document.getElementById('d-temp').textContent = disp.temp.toFixed(0) + "°C";
-    document.getElementById('d-peak').textContent = curved ? r.typical_peak_cm + "cm" : "—";
+    document.getElementById('d-peak-stat').hidden = liveView;
+    document.getElementById('d-peak').textContent = curved ? r.typical_peak_cm + "cm" : "";
     document.getElementById('d-elev').textContent = fmtElevation(r);
     document.getElementById('d-runs-stat').hidden = !r.run_km;
     document.getElementById('d-runs').textContent = r.run_km ? r.run_km + " km" : "";
 
     document.getElementById('d-nocurve').hidden = curved;
-    if(r.id !== lastForecastId) showForecast(r);
+    if(r.id !== lastForecastId){
+      document.getElementById('d-announce').textContent = 'Showing details and forecast for ' + r.name;
+      showForecast(r);
+    }
+    pillResort = r;
+    updatePill();
   }
 
   // Every state change goes through here, so "changed state but forgot to
@@ -1272,6 +1326,6 @@
       sortResorts: sortResorts, fetchMetaLabel: fetchMetaLabel,
       weatherInfo: weatherInfo, forecastIconSvg: forecastIconSvg, fmtDay: fmtDay,
       snowBarPct: snowBarPct, describeForecastDay: describeForecastDay,
-      fmtTemp: fmtTemp, parseForecast: parseForecast, fmtDayParts: fmtDayParts };
+      fmtTemp: fmtTemp, parseForecast: parseForecast, fmtDayParts: fmtDayParts, snowTotalLabel: snowTotalLabel };
   }
 })();

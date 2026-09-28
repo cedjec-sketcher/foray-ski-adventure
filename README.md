@@ -192,6 +192,15 @@ requests itself, so run it on the normal page (`http://localhost:8000/`):
 await (0, eval)(await (await fetch('/test/browser/forecast_check.js')).text())
 ```
 
+`test/browser/detail_card_check.js` checks the detail card's structure (which
+figures are labelled live, illustrative or forecast, the dry-week layout, and
+the "jump to the card" pill; run it with the browser window shorter than the
+page so the card starts below the fold), the same way:
+
+```js
+await (0, eval)(await (await fetch('/test/browser/detail_card_check.js')).text())
+```
+
 `tmp/` is gitignored and not committed; running `build_debug_page.rb`
 regenerates it from whatever `index.html` currently is. These checks are
 real regression coverage, but only run manually today — see
