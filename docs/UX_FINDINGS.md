@@ -51,3 +51,46 @@ turned out to need a large change.
 
 <!-- New reviews get appended below this line, most recent last, each under
      its own "## YYYY-MM-DD — scope of this review" heading. -->
+
+## 2026-09-25 — Third round (full review): open findings
+
+A full review. Its three majors and several minors were fixed on 2026-09-25
+(see [CHANGELOG.md](./CHANGELOG.md): "Fixed phone-width overflow and the
+'GMT+2 JST' timestamp" and "Detail card reorganised into labelled time
+frames"). The raw report wasn't saved here at the time. What follows is the
+part that is **still open**, written up afterwards (2026-09-28).
+
+**Search / rankings**
+
+- **Searching for a live-only resort in the default mode gives an empty list
+  with no explanation.** The page opens in Typical season mode
+  (`state.mode = 'season'`), which hides live-only resorts, and ~450 of the
+  477 resorts are live-only. So a search for most resorts by name finds
+  nothing, and nothing says why or suggests switching to Live now.
+- **"Highest altitude" in Live mode shows a column of "0cm now".** Each row's
+  main figure is the live depth, which is 0cm everywhere off-season. The
+  figure the list is ranked by (elevation) is only in the small second line.
+  Constraint for the fix: on 2026-09-23 the owner rejected showing elevation
+  as a larger, bold figure in that slot (see CHANGELOG.md). Either keep
+  elevation in the plain style or drop the depth reading while this ranking
+  is active.
+
+**Forecast strip**
+
+- **The cloud count doesn't mean the same thing for every precipitation
+  type.** Drizzle codes top out at two clouds and rain at three, so the
+  legend ("more clouds, heavier precipitation") states the principle but not
+  a lookup a reader could rely on.
+- **Day labels ("Heavy snow") are only in the tooltip and screen-reader
+  text.** Touch users can't reveal them; there's no tap-to-reveal.
+- **The strip doesn't use the full width on desktop.**
+
+**Mobile / accessibility**
+
+- **Touch targets below 44px on mobile:** the filter chips and the "Only
+  resorts in map view" checkbox.
+- **No "skip to list" link.** The map comes before the list in the page and
+  every drawn marker is a Tab stop, so keyboard users have to Tab through
+  the markers to reach the list.
+- **Overlapping markers in dense clusters** (the Nagano/Niigata cluster
+  especially) are hard to tap one at a time.
