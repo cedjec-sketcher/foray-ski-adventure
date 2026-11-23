@@ -263,3 +263,5 @@ which terms, and what reusing them requires.
 - [docs/PROPOSALS.md](docs/PROPOSALS.md) — what's still open: proposed
   improvements to code structure, data-source/map flexibility, and test
   coverage
+- [docs/WORKFLOW.md](docs/WORKFLOW.md) — how a change gets from a branch to
+  the live site: PRs, CI, merging, and checking the deploy
