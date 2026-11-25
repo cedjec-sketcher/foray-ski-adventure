@@ -47,7 +47,10 @@ map, showing live snow depth and temperature from
   curves); this is what `index.html` embeds
 - `config/season.json` — the season's start/end/peak dates and bell-curve
   width; change this instead of editing code to shift the illustrative
-  season (e.g. for a different hemisphere or mountain range)
+  season (e.g. for a different hemisphere or mountain range). Also
+  `live_season_from`/`live_season_to` (month-day, wrapping the new year):
+  inside that window the page opens in Live now with a ski-season banner,
+  outside it in Typical season with the off-season banner
 - `lib/openskimap_import.rb` — pure logic for turning OpenSkiMap's ski-area
   GeoJSON into resort entries (regions, size tiers, name cleanup, matching
   the curated resorts, ids)
@@ -199,6 +202,15 @@ page so the card starts below the fold), the same way:
 
 ```js
 await (0, eval)(await (await fetch('/test/browser/detail_card_check.js')).text())
+```
+
+`test/browser/season_default_check.js` checks which mode and banner the page
+opens with. It runs on the debug page with `?today=` fixing the date, once per
+date on a fresh load (for example `?today=2026-11-25` in season and
+`?today=2026-07-01` off-season):
+
+```js
+await (0, eval)(await (await fetch('/test/browser/season_default_check.js')).text())
 ```
 
 `tmp/` is gitignored and not committed; running `build_debug_page.rb`

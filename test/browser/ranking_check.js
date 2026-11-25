@@ -82,6 +82,10 @@
   if(scenario === 'winter'){
     checkMarkerOrder('initial load, before any interaction');
 
+    // The page opens in Live now during the ski season; these checks start
+    // from Typical season whatever today's date is.
+    season(); await sleep(150);
+
     check('fetch-meta reads as a snapshot in Typical season mode, not as live data',
       $('#fetch-meta').textContent.startsWith('TYPICAL SEASON SHOWN'), $('#fetch-meta').textContent);
 

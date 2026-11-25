@@ -3,5 +3,7 @@
   "season_end": "2026-04-30",
   "peak_date": "2026-02-14",
   "bell_width": 45,
-  "step_days": 3
+  "step_days": 3,
+  "live_season_from": "11-15",
+  "live_season_to": "04-30"
 }
