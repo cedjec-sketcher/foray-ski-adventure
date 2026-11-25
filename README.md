@@ -276,4 +276,9 @@ which terms, and what reusing them requires.
   improvements to code structure, data-source/map flexibility, and test
   coverage
 - [docs/WORKFLOW.md](docs/WORKFLOW.md) — how a change gets from a branch to
-  the live site: PRs, CI, merging, and checking the deploy
+  the live site (PRs, CI, merging, checking the deploy), and the project's
+  roles: owner, developer, UX specialist, product owner
+- [docs/PRODUCT_GAPS.md](docs/PRODUCT_GAPS.md) — the product owner's gap
+  analyses against other ski-conditions apps
+- [docs/UX_FINDINGS.md](docs/UX_FINDINGS.md) — open findings from the UX
+  specialist's reviews

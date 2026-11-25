@@ -20,16 +20,11 @@ proposal until a human (or the developer role, on explicit instruction)
 decides to act on it.
 
 **Status:** first review run 2026-09-22 (see below), scoped as a validation
-pass rather than a full audit. One implementation note from setting this
-up: the `ux-specialist` subagent type isn't recognized by this session's
-`Agent` tool (project-level custom agent definitions aren't picked up here)
-— `.claude/agents/ux-specialist.md` is kept as the reusable review brief,
-but reviews are actually run via the built-in `Explore` agent type (no
-Edit/Write tool, so it mechanically can't touch files — Bash is technically
-still available to it, so the "never modify anything" guarantee is
-instruction-level there, not a hard wall) with that brief pasted in as the
-task prompt. See `.claude/agents/ux-specialist.md`'s own header for the
-exact invocation shape.
+pass rather than a full audit. Reviews are run with the `ux-specialist`
+agent type defined in `.claude/agents/ux-specialist.md`, which only has
+browser tools and Read, so it can't modify anything. (Until 2026-09 the
+app didn't pick up project agents, and reviews went through the built-in
+`Explore` type with that brief pasted in.)
 
 ---
 

@@ -6,19 +6,13 @@ model: sonnet
 ---
 
 <!--
-HOW THIS IS ACTUALLY INVOKED (as of 2026-09-22): the Claude Code session
-used to build this checked, and `subagent_type: "ux-specialist"` is not
-recognized here — project-level custom agent definitions aren't picked up
-by this session's Agent tool, only the built-in types are (claude,
-claude-code-guide, Explore, general-purpose, Plan, statusline-setup). This
-file is kept anyway as the canonical, reusable review brief: the
-orchestrating session pastes everything below the frontmatter into the
-`prompt` argument of an `Agent` call with `subagent_type: "Explore"` (it
-has no Edit/Write tool, so it mechanically can't touch files — it does
-still have Bash, so "never modify anything" is enforced by the instruction
-below, not a hard wall). If a future session's Agent tool *does* recognize
-`ux-specialist` as a type, this frontmatter is already correct and it can
-be invoked directly instead.
+HOW THIS IS INVOKED (updated 2026-11-25): the desktop app now picks up
+project-level agent definitions, so `subagent_type: "ux-specialist"` works
+directly and gets exactly the tools listed above (browser tools and Read; no
+Edit, Write or Bash, so it can't modify anything). Until 2026-09 it wasn't
+recognized, and reviews ran through the built-in `Explore` type with this
+brief pasted in; that workaround is no longer needed. A newly added agent
+file may only be picked up from the next session on.
 -->
 
 

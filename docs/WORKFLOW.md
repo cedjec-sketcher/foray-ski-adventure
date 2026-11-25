@@ -4,6 +4,18 @@ How work on this repo is done day to day, mostly by Claude (Claude Code in
 the desktop app, working on the owner's Mac). The site is deployed by GitHub
 Pages straight from `main`, so **merging a PR is publishing it**.
 
+## Roles
+
+| Role | Who | Does | Writes to |
+|---|---|---|---|
+| Owner | Jens | Decides: what gets built, data sources, visual options, anything sent outside the project | — |
+| Developer | The main Claude session | Builds, tests, opens and merges PRs, checks the deploy, keeps the docs current | Code and `docs/` |
+| UX specialist | `ux-specialist` agent (`.claude/agents/`) | Reviews the running app's usability; never edits files | Report, filed in [UX_FINDINGS.md](./UX_FINDINGS.md) |
+| Product owner | `product-owner` agent (`.claude/agents/`) | Gap analysis against other ski-conditions apps and product priorities; never edits files | Report, filed in [PRODUCT_GAPS.md](./PRODUCT_GAPS.md) |
+
+The two reviewer roles only propose. Items the owner picks become entries in
+[PROPOSALS.md](./PROPOSALS.md), and the developer builds them.
+
 ## Setup
 
 - Repo: `cedjec-sketcher/foray-ski-adventure`, default branch `main`.
