@@ -294,6 +294,16 @@ only shown or hidden.
   is, and clicking a row pans/zooms the map to it if needed. The selected
   resort is always drawn (you don't lose it on the map when a filter would
   exclude it) but only gets a list row if it passes the filters.
+- **The opening mode follows the calendar.** Inside `config/season.json`'s
+  `live_season_from`..`live_season_to` window (Nov 15 to Apr 30 for Japan;
+  it wraps the new year) the page opens in Live now with a "ski season"
+  banner that also says the model reads low; outside it, in Typical season
+  with the off-season banner, since live depths are 0cm almost everywhere
+  then. It's decided once at load from the viewer's own date (a day's
+  difference from Japan's doesn't matter here) by the pure
+  `inSeasonWindow`. The window travels in the generated data
+  (`DATA.live_season`), so a country with a different season only needs a
+  different config value.
 - **Live-only resorts are hidden in Typical season mode**, not shown with
   today's values: a slider scrubbing a hypothetical February shouldn't have
   markers quietly showing September's numbers. The status line says how many

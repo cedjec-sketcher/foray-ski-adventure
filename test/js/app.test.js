@@ -480,6 +480,40 @@ test('fmtTemp rounds, shows a dash for a missing value, and never prints -0', ()
   assert.equal(app.fmtTemp(undefined), '—');
 });
 
+test('roundTemp never prints -0, unlike toFixed(0)', () => {
+  assert.equal((-0.3).toFixed(0), '-0'); // the bug this replaces
+  assert.equal(app.roundTemp(-0.3), '0');
+  assert.equal(app.roundTemp(-0.5), '0');
+  assert.equal(app.roundTemp(-0.6), '-1');
+  assert.equal(app.roundTemp(-7.2), '-7');
+  assert.equal(app.roundTemp(3.5), '4');
+});
+
+test('inSeasonWindow handles a window that wraps the new year, inclusive at both ends', () => {
+  const w = (d) => app.inSeasonWindow(d, '11-15', '04-30');
+  assert.equal(w('2026-11-14'), false);
+  assert.equal(w('2026-11-15'), true);
+  assert.equal(w('2026-12-31'), true);
+  assert.equal(w('2027-01-01'), true);
+  assert.equal(w('2027-04-30'), true);
+  assert.equal(w('2027-05-01'), false);
+  assert.equal(w('2026-09-28'), false);
+});
+
+test('inSeasonWindow handles a window inside one calendar year', () => {
+  const w = (d) => app.inSeasonWindow(d, '02-01', '06-20');
+  assert.equal(w('2027-01-31'), false);
+  assert.equal(w('2027-02-01'), true);
+  assert.equal(w('2027-06-20'), true);
+  assert.equal(w('2027-06-21'), false);
+  assert.equal(w('2027-12-25'), false);
+});
+
+test('localIsoDate zero-pads month and day', () => {
+  assert.equal(app.localIsoDate(new Date(2026, 0, 5)), '2026-01-05');
+  assert.equal(app.localIsoDate(new Date(2026, 10, 25)), '2026-11-25');
+});
+
 test('fmtDay stays unambiguous across a month boundary', () => {
   assert.equal(app.fmtDay('2026-02-28'), 'Sat 28');
   assert.equal(app.fmtDay('2026-03-01'), 'Sun Mar 1');

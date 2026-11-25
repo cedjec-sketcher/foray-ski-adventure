@@ -84,6 +84,22 @@
     return d.toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZone:"UTC"});
   }
 
+  // Is the "MM-DD" part of isoDate inside [from, to] (both "MM-DD", inclusive)?
+  // The ski season crosses the new year ("11-15" to "04-30"), so a window whose
+  // start comes after its end wraps around. String comparison works because
+  // the parts are zero-padded.
+  function inSeasonWindow(isoDate, from, to){
+    var md = isoDate.slice(5, 10);
+    return from <= to ? (md >= from && md <= to) : (md >= from || md <= to);
+  }
+
+  // Today as YYYY-MM-DD in the viewer's own calendar (a day either way of
+  // Japan's doesn't matter for a season window).
+  function localIsoDate(d){
+    var pad = function(n){ return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
   // Only larger resorts have a typical-season pattern (see
   // data/illustrative_curve_tuning.json); the rest are live-only.
   function hasCurve(r){
@@ -191,8 +207,11 @@
     return Math.max(6, Math.min(100, Math.round(cm / scale * 100)));
   }
 
+  // Whole degrees as text. Not toFixed(0): (-0.3).toFixed(0) is "-0", while
+  // String(Math.round(-0.3)) is "0".
+  function roundTemp(v){ return String(Math.round(v)); }
   // Open-Meteo can leave a value null; show a dash rather than a made-up 0°.
-  function fmtTemp(v){ return v == null ? "—" : Math.round(v) + "°"; }
+  function fmtTemp(v){ return v == null ? "—" : roundTemp(v) + "°"; }
 
   // Open-Meteo's `daily` block (parallel arrays) -> one object per day.
   function parseForecast(data){
@@ -642,7 +661,7 @@
         el.classList.remove('marker-dim');
         el.setAttribute('tabindex', '0');
         el.removeAttribute('aria-hidden');
-        el.setAttribute('aria-label', r.name + ", " + r.region + ", " + Math.round(disp.depth) + " centimeters, " + disp.temp.toFixed(0) + " degrees");
+        el.setAttribute('aria-label', r.name + ", " + r.region + ", " + Math.round(disp.depth) + " centimeters, " + roundTemp(disp.temp) + " degrees");
       }
       activeOnes.push(m);
     });
@@ -812,13 +831,13 @@
       var whenLabel = (state.mode === 'live' || !hasCurve(r)) ? 'now' : fmtDate(DATES[state.dayIndex]);
       refs.live.textContent = Math.round(disp.depth) + 'cm ' + whenLabel;
       var place = r.prefecture && r.prefecture !== r.region ? r.prefecture + ' · ' : '';
-      refs.elev.textContent = place + fmtElevation(r) + ' · ' + disp.temp.toFixed(0) + '°C';
+      refs.elev.textContent = place + fmtElevation(r) + ' · ' + roundTemp(disp.temp) + '°C';
 
       // Without this, the row's accessible name falls back to its child
       // text nodes run together with no separators - unlike the marker's
       // own aria-label, which is already a clean, comma-separated sentence
       // (UX review). Rebuilt every render since depth/temp change with mode.
-      var labelParts = [r.name, r.region, Math.round(disp.depth) + ' centimeters ' + whenLabel, disp.temp.toFixed(0) + ' degrees'];
+      var labelParts = [r.name, r.region, Math.round(disp.depth) + ' centimeters ' + whenLabel, roundTemp(disp.temp) + ' degrees'];
       if(r.elevation_top_m) labelParts.push(r.elevation_top_m + ' meters elevation');
       // placeRankedRows() (above) already set refs.rank for this render.
       if(!refs.rank.hidden) labelParts.push('ranked number ' + refs.rank.textContent);
@@ -1176,7 +1195,7 @@
       liveView ? 'Live now' : 'Typical season \u00b7 ' + dateLbl + ' \u00b7 illustrative';
     document.getElementById('d-live').textContent = Math.round(disp.depth) + "cm";
     document.getElementById('d-live').classList.toggle('muted', disp.depth === 0);
-    document.getElementById('d-temp').textContent = disp.temp.toFixed(0) + "°C";
+    document.getElementById('d-temp').textContent = roundTemp(disp.temp) + "°C";
     document.getElementById('d-peak-stat').hidden = liveView;
     document.getElementById('d-peak').textContent = curved ? r.typical_peak_cm + "cm" : "";
     document.getElementById('d-elev').textContent = fmtElevation(r);
@@ -1289,8 +1308,16 @@
 
   document.getElementById('resort-count').textContent = DATA.resorts.length;
 
+  // In the ski season live depths are worth opening on; outside it they're 0cm
+  // almost everywhere, so the page opens on the illustrative typical season.
+  // window.__todayOverride is a test hook (test/browser/debug_hooks.js, ?today=).
+  var today = window.__todayOverride || localIsoDate(new Date());
+  var skiSeason = !!DATA.live_season && inSeasonWindow(today, DATA.live_season.from, DATA.live_season.to);
+  document.getElementById('banner-season').hidden = !skiSeason;
+  document.getElementById('banner-off').hidden = skiSeason;
+
   slider.value = PEAK_INDEX;
-  setMode('season');
+  setMode(skiSeason ? 'live' : 'season');
   select("niseko");
 
   // ---- resort-list height, matched to the map card ----
@@ -1326,6 +1353,6 @@
       sortResorts: sortResorts, fetchMetaLabel: fetchMetaLabel,
       weatherInfo: weatherInfo, forecastIconSvg: forecastIconSvg, fmtDay: fmtDay,
       snowBarPct: snowBarPct, describeForecastDay: describeForecastDay,
-      fmtTemp: fmtTemp, parseForecast: parseForecast, fmtDayParts: fmtDayParts, snowTotalLabel: snowTotalLabel };
+      fmtTemp: fmtTemp, roundTemp: roundTemp, inSeasonWindow: inSeasonWindow, localIsoDate: localIsoDate, parseForecast: parseForecast, fmtDayParts: fmtDayParts, snowTotalLabel: snowTotalLabel };
   }
 })();

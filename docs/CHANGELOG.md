@@ -532,3 +532,33 @@ peak hiding, the pill and the dry-week layout are broken. Unit tests 84/84 and
 `forecast_check.js` 21/21 via the browser shim (no `node` in the sandbox),
 `rake test` 54/54.
 
+**Opens in Live now during the ski season; "-0°C" fixed; ranking check repaired
+(2026-11-25).** Found by testing the app as it stood in late November.
+- The page always opened on the illustrative Typical season, under a banner
+  saying it was "off-season... in September", even with real snow on the
+  ground. `config/season.json` now has a month-day window,
+  `live_season_from`/`live_season_to` (Nov 15 to Apr 30), carried into the
+  page as `DATA.live_season`. Inside it the page opens in Live now with a new
+  "Ski season" banner that also says the model often reads lower than
+  resorts' own reports; outside it, it opens as before, with the off-season
+  banner no longer naming a month. Owner chose this (option A) from three
+  mocked-up options; the others were also setting the Typical season slider
+  to today's date (B) and always opening in Live now (C).
+- Temperatures just below zero showed as "-0°C" in list rows, the detail card
+  and screen-reader labels: `toFixed(0)` prints -0.3 as "-0". They now go
+  through a new `roundTemp` (the forecast's `fmtTemp` already avoided it).
+- `test/browser/ranking_check.js` had been failing one check since the
+  forecast shipped: the page selects a resort at load, and the debug page's
+  Open-Meteo mock counted that resort's forecast request as a live refresh
+  (478 locations instead of 477) and answered it in the wrong shape, so the
+  debug page also showed "Forecast unavailable". The mock now only handles
+  `current=` requests. The check also now switches to Typical season itself
+  instead of assuming the page opens there.
+
+Tests: new unit tests for `inSeasonWindow` (wrapping and non-wrapping
+windows, both ends inclusive), `localIsoDate` and `roundTemp`; new
+`test/browser/season_default_check.js` (7 checks, run with `?today=` for
+2026-07-01, 2026-11-25 and 2027-04-30). Unit tests 88/88 through the browser
+shim (no `node` locally; CI runs `node --test`), `rake test` 54/54,
+`ranking_check.js` 49/49 across its three scenarios, `forecast_check.js`
+21/21, `detail_card_check.js` 20/20.

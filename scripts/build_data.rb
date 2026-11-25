@@ -65,6 +65,12 @@ out = {
   # see DATA_LICENSE.md.
   "data_license" => "Resort names, locations, elevations and run lengths: ODbL 1.0, from OpenSkiData / OpenSkiMap.org, (c) OpenStreetMap contributors, Skimap.org, Who's On First, (c) Mapterhorn. Snow depth, temperature and weather code: CC BY 4.0, Open-Meteo.com. See DATA_LICENSE.md in the project repository.",
   "generated_note" => "Live snow depth/temperature fetched from Open-Meteo (api.open-meteo.com) at build time. Typical-season curves are illustrative seasonal patterns based on each resort's known typical peak base depth, not measured historical data.",
+  # Month-day window (wraps the new year) in which the page opens in Live now
+  # rather than Typical season: the ski season, when live depths mean something.
+  "live_season" => {
+    "from" => season_config.fetch("live_season_from"),
+    "to" => season_config.fetch("live_season_to"),
+  },
   "resorts" => resorts,
 }
 json_str = JSON.generate(out)

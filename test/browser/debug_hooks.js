@@ -10,11 +10,15 @@
 //   mockDepth=N   every resort has N cm (0 = the off-season case)
 //   mockFail=K    the K-th request (counting from 1) fails with HTTP 429
 //   mockDelay=MS  answer after MS milliseconds (to observe "fetching" states)
+// Independently of ?winter:
+//   today=YYYY-MM-DD  the date the page treats as today when it decides whether
+//                     to open in Live now (ski season) or Typical season
 (function(){
   L.Map.addInitHook(function(){ window.__map = this; });
   window.__fetches = [];
 
   var q = new URLSearchParams(location.search);
+  if(q.has('today')) window.__todayOverride = q.get('today');
   var realFetch = window.fetch;
   var resorts = JSON.parse(document.getElementById('ski-data').textContent).resorts;
   var byCoord = {};
@@ -34,7 +38,11 @@
   window.fetch = function(url){
     var u = String(url);
     var m = u.match(/latitude=([^&]*)&longitude=([^&]*)/);
-    if(!m) return realFetch.apply(this, arguments);
+    // Only the live-conditions refresh (`current=`). The detail card's 7-day
+    // forecast (`daily=`) goes to the real API, uncounted: the page selects a
+    // resort at load, and counting or mocking that request broke the
+    // "each resort fetched once" check and the debug page's forecast.
+    if(!m || !/[?&]current=/.test(u)) return realFetch.apply(this, arguments);
     var lats = m[1].split(','), lons = m[2].split(',');
     window.__fetches.push(lats.length);
     if(!q.has('winter')) return realFetch.apply(this, arguments);
